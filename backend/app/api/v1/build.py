@@ -11,7 +11,9 @@ from app.models.build import (
     SuggestRequest,
     Suggestion,
 )
+from app.models.soq import BuildSoqRequest
 from app.services.resume_builder import ResumeBuilderService
+from app.services.soq_builder import SOQBuilderService
 
 router = APIRouter(prefix="/build", tags=["build"])
 
@@ -44,6 +46,19 @@ def build_resume(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/soq", response_model=BuiltDocument)
+def build_soq(
+    payload: BuildSoqRequest, session: Session = Depends(get_session)
+) -> BuiltDocument:
+    """Assemble an SOQ response from selected items within a word limit."""
+    service = SOQBuilderService(session)
+    return service.answer_question(
+        payload.question,
+        payload.selected_item_ids,
+        max_words=payload.max_words,
+    )
 
 
 @router.post("/auto-resume", response_model=BuiltDocument)
