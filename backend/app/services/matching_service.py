@@ -10,7 +10,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlmodel import Session
 
-from app.db.models import KnowledgeItem, KnowledgeItemEvidenceLink
+from app.db.models import (
+    Application,
+    ApplicationEvidenceLink,
+    Evidence,
+    KnowledgeItem,
+    KnowledgeItemEvidenceLink,
+)
 from app.repositories.knowledge_item import KnowledgeItemRepository
 
 # Star rating thresholds per Implementation Guide section 13.3.
@@ -104,3 +110,82 @@ class MatchingService:
             row[0]
             for row in self.session.execute(stmt).all()
         ]
+
+    def get_provenance(self, item_id: str):
+        """Assemble full trace info for one knowledge item."""
+        from app.db.models import (
+            Application,
+            ApplicationEvidenceLink,
+            SourceDocument,
+        )
+        from app.repositories.evidence import EvidenceRepository
+
+        item = self.session.get(KnowledgeItem, item_id)
+        if item is None:
+            return None
+
+        # Source document.
+        source_doc = None
+        if item.source_doc_id:
+            doc = self.session.get(SourceDocument, item.source_doc_id)
+            if doc is not None:
+                source_doc = {
+                    "id": doc.id,
+                    "filename": doc.filename,
+                    "file_type": doc.file_type,
+                    "imported_at": doc.imported_at.isoformat(),
+                }
+
+        # Linked evidence with strength + historical success rate.
+        evidence_repo = EvidenceRepository(self.session)
+        evidence_info = []
+        link_rows = self.session.execute(
+            select(KnowledgeItemEvidenceLink).where(
+                KnowledgeItemEvidenceLink.knowledge_item_id == item_id
+            )
+        ).scalars().all()
+        for link in link_rows:
+            evidence = self.session.get(Evidence, link.evidence_id)
+            if evidence is None:
+                continue
+            evidence_info.append(
+                {
+                    "id": evidence.id,
+                    "title": evidence.title,
+                    "type": evidence.type,
+                    "company": evidence.company,
+                    "role": evidence.role,
+                    "strength": link.strength,
+                    "success_rate": evidence_repo.get_success_rate(evidence.id),
+                }
+            )
+
+        # Applications that used this item and their outcomes.
+        usage: list[dict] = []
+        rows = self.session.execute(
+            select(ApplicationEvidenceLink, Application)
+            .join(
+                Application,
+                Application.id == ApplicationEvidenceLink.application_id,
+            )
+            .where(ApplicationEvidenceLink.knowledge_item_id == item_id)
+        ).all()
+        for ae_link, application in rows:
+            usage.append(
+                {
+                    "application_id": application.id,
+                    "applied_at": application.applied_at.isoformat(),
+                    "application_status": application.status,
+                    "result": ae_link.result,
+                    "used_in_resume": ae_link.used_in_resume,
+                    "used_in_soq": ae_link.used_in_soq,
+                    "used_in_duty": ae_link.used_in_duty,
+                }
+            )
+
+        return {
+            "knowledge_item": item,
+            "source_document": source_doc,
+            "evidence": evidence_info,
+            "usage": usage,
+        }

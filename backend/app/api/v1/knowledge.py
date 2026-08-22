@@ -88,6 +88,23 @@ def get_knowledge_item(
     return item
 
 
+@router.get("/{item_id}/provenance")
+def get_item_provenance(
+    item_id: str, session: Session = Depends(get_session)
+) -> dict:
+    """Full trace info: source document, linked evidence, usage history."""
+    from app.services.matching_service import MatchingService
+
+    provenance = MatchingService(session).get_provenance(item_id)
+    if provenance is None:
+        raise HTTPException(status_code=404, detail="Knowledge item not found")
+    item = provenance["knowledge_item"]
+    provenance["knowledge_item"] = KnowledgeItem.model_validate(
+        item, from_attributes=True
+    )
+    return provenance
+
+
 @router.put("/{item_id}", response_model=KnowledgeItem)
 def update_knowledge_item(
     item_id: str,

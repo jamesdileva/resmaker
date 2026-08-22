@@ -14,6 +14,11 @@ vi.mock('../api/search', () => ({
   searchKnowledgeBase: (...args: unknown[]) => searchMock(...args),
 }));
 
+const provenanceMock = vi.fn();
+vi.mock('../api/knowledge', () => ({
+  getKnowledgeProvenance: (...args: unknown[]) => provenanceMock(...args),
+}));
+
 const RESULT = {
   knowledge_item: {
     id: 'item-1',
@@ -31,6 +36,13 @@ const RESULT = {
 describe('KnowledgeExplorer', () => {
   beforeEach(() => {
     searchMock.mockReset();
+    provenanceMock.mockReset();
+    provenanceMock.mockResolvedValue({
+      knowledge_item: RESULT.knowledge_item,
+      source_document: null,
+      evidence: [],
+      usage: [],
+    });
     searchMock.mockResolvedValue({ items: [RESULT], total: 1 });
   });
 
@@ -73,5 +85,26 @@ describe('KnowledgeExplorer', () => {
     searchMock.mockRejectedValue(new Error('Request failed'));
     render(<KnowledgeExplorer />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Request failed');
+  });
+
+  it('opens the provenance panel when a result is clicked', async () => {
+    provenanceMock.mockResolvedValue({
+      knowledge_item: RESULT.knowledge_item,
+      source_document: null,
+      evidence: [],
+      usage: [],
+    });
+
+    render(<KnowledgeExplorer />);
+    await waitFor(() => screen.getAllByTestId('result-item'));
+
+    fireEvent.click(screen.getAllByTestId('result-item')[0]);
+    const panel = await screen.findByTestId('provenance-panel');
+    expect(panel).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Close provenance panel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('provenance-panel')).toBeNull();
+    });
   });
 });

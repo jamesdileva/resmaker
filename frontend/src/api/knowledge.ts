@@ -3,8 +3,45 @@ import type {
   KnowledgeItem,
   KnowledgeItemListResponse,
   KnowledgeItemType,
-  MatchResult,
 } from '../types';
+import type { MatchResult } from '../types';
+
+export interface ProvenanceData {
+  knowledge_item: KnowledgeItem;
+  source_document: {
+    id: string;
+    filename: string;
+    file_type: string;
+    imported_at: string;
+  } | null;
+  evidence: {
+    id: string;
+    title: string;
+    type: string;
+    company: string | null;
+    role: string | null;
+    strength: number;
+    success_rate: number;
+  }[];
+  usage: {
+    application_id: string;
+    applied_at: string;
+    application_status: string;
+    result: string | null;
+    used_in_resume: boolean;
+    used_in_soq: boolean;
+    used_in_duty: boolean;
+  }[];
+}
+
+export async function getKnowledgeProvenance(
+  id: string,
+): Promise<ProvenanceData> {
+  const response = await apiClient.get<ProvenanceData>(
+    `/knowledge-items/${id}/provenance`,
+  );
+  return response.data;
+}
 
 export interface KnowledgeItemFilters {
   skip?: number;

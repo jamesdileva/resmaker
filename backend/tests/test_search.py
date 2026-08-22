@@ -174,3 +174,65 @@ def test_match_endpoint_unknown_posting_404(client) -> None:
 def test_match_endpoint_requires_input(client) -> None:
     response = client.post("/api/v1/match/", json={"query": ""})
     assert response.status_code == 400
+
+
+# --- Provenance endpoint (Sprint 24) ---
+
+
+def test_provenance_endpoint_full_trace(client, api_session: Session) -> None:
+    from app.db.models import (
+        Application,
+        ApplicationEvidenceLink,
+        JobPosting,
+        SourceDocument,
+    )
+
+    evidence, items = _seed(api_session)
+    item = items[0]
+
+    doc = SourceDocument(filename="resume.pdf", file_type="pdf")
+    api_session.add(doc)
+    api_session.commit()
+    item.source_doc_id = doc.id
+    api_session.add(item)
+    api_session.commit()
+
+    posting = JobPosting(title="Role", raw_text="duties")
+    application = Application(job_posting_id=posting.id, status="offer")
+    api_session.add_all([posting])
+    api_session.commit()
+    api_session.add(application)
+    api_session.commit()
+    api_session.add(
+        ApplicationEvidenceLink(
+            application_id=application.id,
+            knowledge_item_id=item.id,
+            used_in_resume=True,
+            result="offer",
+        )
+    )
+    api_session.commit()
+
+    response = client.get(f"/api/v1/knowledge-items/{item.id}/provenance")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["source_document"]["filename"] == "resume.pdf"
+
+    assert len(body["evidence"]) == 1
+    ev = body["evidence"][0]
+    assert ev["title"] == "Boost Mobile"
+    assert ev["strength"] >= 1
+    # The recorded 'offer' outcome yields a perfect historical rate.
+    assert ev["success_rate"] == pytest.approx(1.0)
+
+    assert len(body["usage"]) == 1
+    usage = body["usage"][0]
+    assert usage["application_status"] == "offer"
+    assert usage["result"] == "offer"
+    assert usage["used_in_resume"] is True
+
+
+def test_provenance_endpoint_404(client) -> None:
+    response = client.get("/api/v1/knowledge-items/nope/provenance")
+    assert response.status_code == 404

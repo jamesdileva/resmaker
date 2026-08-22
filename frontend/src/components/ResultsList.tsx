@@ -1,12 +1,18 @@
 import { StarRating } from './StarRating';
+import { EvidenceBadge } from './EvidenceBadge';
 import type { SearchResponseItem } from '../api/search';
 
 interface ResultsListProps {
   results: SearchResponseItem[];
   isLoading: boolean;
+  onSelect?: (itemId: string) => void;
 }
 
-export function ResultsList({ results, isLoading }: ResultsListProps) {
+export function ResultsList({
+  results,
+  isLoading,
+  onSelect,
+}: ResultsListProps) {
   if (isLoading) {
     return (
       <p data-testid="results-loading" style={{ color: '#6b7280' }}>
@@ -29,11 +35,13 @@ export function ResultsList({ results, isLoading }: ResultsListProps) {
         <li
           key={result.knowledge_item.id}
           data-testid="result-item"
+          onClick={() => onSelect?.(result.knowledge_item.id)}
           style={{
             border: '1px solid #e5e7eb',
             borderRadius: 6,
             padding: 10,
             marginBottom: 10,
+            cursor: onSelect ? 'pointer' : 'default',
           }}
         >
           <div
@@ -73,31 +81,10 @@ export function ResultsList({ results, isLoading }: ResultsListProps) {
             <small style={{ color: '#9ca3af' }}>
               [{result.knowledge_item.type}]
             </small>
-            <EvidenceBadge evidenceIds={result.evidence_ids} />
+            <EvidenceBadge count={result.evidence_ids.length} />
           </div>
         </li>
       ))}
     </ul>
-  );
-}
-
-function EvidenceBadge({ evidenceIds }: { evidenceIds: string[] }) {
-  if (evidenceIds.length === 0) {
-    return null;
-  }
-  return (
-    <span
-      data-testid="evidence-badge"
-      title={`Linked to ${evidenceIds.length} evidence record(s)`}
-      style={{
-        fontSize: 12,
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: 999,
-        padding: '1px 8px',
-      }}
-    >
-      ⛓ {evidenceIds.length} evidence
-    </span>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { SearchBar } from '../components/SearchBar';
 import { SearchFilters } from '../components/SearchFilters';
 import { ResultsList } from '../components/ResultsList';
+import { ProvenancePanel } from '../components/ProvenancePanel';
 import {
   DEFAULT_FILTERS,
   searchKnowledgeBase,
@@ -19,6 +20,7 @@ export function KnowledgeExplorer() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const latestRequest = useRef(0);
 
@@ -71,9 +73,19 @@ export function KnowledgeExplorer() {
               {error}
             </p>
           )}
-          <ResultsList results={results} isLoading={isLoading} />
+          <ResultsList
+            results={results}
+            isLoading={isLoading}
+            onSelect={setSelectedItemId}
+          />
         </div>
       </div>
+      {selectedItemId && (
+        <ProvenancePanel
+          itemId={selectedItemId}
+          onClose={() => setSelectedItemId(null)}
+        />
+      )}
     </div>
   );
 }
