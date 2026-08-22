@@ -18,6 +18,8 @@ from app.db.models import (
     KnowledgeItemEvidenceLink,
 )
 from app.repositories.knowledge_item import KnowledgeItemRepository
+from app.services.historical_weighting import HistoricalWeightingService
+from app.services.tfidf_service import TfidfService
 
 # Star rating thresholds per Implementation Guide section 13.3.
 STAR_THRESHOLDS: list[tuple[float, int]] = [
@@ -65,17 +67,19 @@ class MatchingService:
     ) -> list[SearchResult]:
         """Full explorer search with filters, stars, and provenance.
 
-        An empty query returns recent items (browse mode, zero scores).
-        ``match_all=False`` switches FTS5 to OR semantics for broad
-        recall against long texts like job postings.
+        Ranking pipeline: TF-IDF cosine similarity (rebuilding the cached
+        index when stale), boosted by historical success weighting
+        (final = cosine * (1 + weight)); falls back to FTS5 ranking when
+        the corpus is too small for a meaningful IDF. An empty query
+        returns recent items (browse mode).
         """
         repo = KnowledgeItemRepository(self.session)
-        if query.strip():
-            matches = repo.search(query, min_score=min_score, match_all=match_all)
-            candidates = [(m.knowledge_item, m.score) for m in matches]
-        else:
-            items = repo.get_multi(skip=0, limit=500)
-            candidates = [(item, 0.0) for item in items]
+        candidates = self._base_candidates(query, repo, match_all, min_score)
+
+        weighting = HistoricalWeightingService(self.session)
+        weights = weighting.calculate_weights_bulk(
+            [item.id for item, _ in candidates]
+        )
 
         results: list[SearchResult] = []
         for item, score in candidates:
@@ -83,13 +87,14 @@ class MatchingService:
                 continue
             if categories and item.category not in categories:
                 continue
-            stars = stars_for_score(score)
+            weighted = min(score * (1 + weights.get(item.id, 0.0)), 1.0)
+            stars = stars_for_score(weighted)
             if stars < min_star_rating:
                 continue
             results.append(
                 SearchResult(
                     knowledge_item=item,
-                    score=score,
+                    score=weighted,
                     star_rating=stars,
                     evidence_ids=self._evidence_ids(item.id),
                 )
@@ -101,6 +106,47 @@ class MatchingService:
             results.sort(key=lambda r: r.score, reverse=True)
 
         return results[:limit]
+
+    def _base_candidates(
+        self,
+        query: str,
+        repo: KnowledgeItemRepository,
+        match_all: bool,
+        min_score: float,
+    ) -> list[tuple[KnowledgeItem, float]]:
+        """Produce (item, base_score) pairs via TF-IDF with FTS5 fallback.
+
+        TF-IDF is preferred at any corpus size: zero-IDF terms (e.g.
+        stopwords) drop out of cosine scoring automatically, whereas
+        normalized BM25 over OR queries rewards documents matching
+        fewer, more common terms. FTS5 remains the fallback when no
+        index vocabulary exists yet (e.g. an empty database).
+        """
+        if not query.strip():
+            items = repo.get_multi(skip=0, limit=500)
+            return [(item, 0.0) for item in items]
+
+        tfidf = TfidfService(self.session)
+        tfidf.rebuild_if_needed()
+        query_vec = tfidf.vectorize_query(query)
+
+        if query_vec:
+            # Cosine similarity is honestly calibrated (~0 means no
+            # relation), so only a small epsilon floor applies here;
+            # the caller's min_score targets FTS5-score calibration.
+            items = repo.get_multi(skip=0, limit=10000)
+            scored = [
+                (item, tfidf.similarity(item.id, query_vec))
+                for item in items
+            ]
+            return [
+                (item, score)
+                for item, score in scored
+                if score > 0.01
+            ]
+
+        matches = repo.search(query, min_score=min_score, match_all=match_all)
+        return [(m.knowledge_item, m.score) for m in matches]
 
     def _evidence_ids(self, item_id: str) -> list[str]:
         stmt = select(KnowledgeItemEvidenceLink.evidence_id).where(

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from app.db.connection import get_session
 from app.db.models import Application, JobPosting
+from app.models.application import ApplicationResultRequest
 from app.repositories.application import ApplicationRepository
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -17,12 +18,6 @@ class ApplicationCreate(BaseModel):
     """Payload for creating an application."""
 
     job_posting_id: str
-
-
-class ApplicationResultUpdate(BaseModel):
-    """Payload for updating an application's outcome."""
-
-    status: Literal["applied", "interview", "offer", "rejected"]
 
 
 @router.get("/", response_model=list[Application])
@@ -65,13 +60,22 @@ def get_application(
 @router.post("/{application_id}/result", response_model=Application)
 def update_application_result(
     application_id: str,
-    payload: ApplicationResultUpdate,
+    payload: ApplicationResultRequest,
     session: Session = Depends(get_session),
 ) -> Application:
-    """Update an application's outcome status."""
-    updated = ApplicationRepository(session).update_result(
-        application_id, payload.status
-    )
+    """Update an application's outcome and record evidence usage."""
+    repo = ApplicationRepository(session)
+    updated = repo.update_result(application_id, payload.status)
     if updated is None:
         raise HTTPException(status_code=404, detail="Application not found")
+
+    for usage in payload.evidence_usage:
+        repo.record_evidence_usage(
+            application_id,
+            usage.knowledge_item_id,
+            used_in_resume=usage.used_in_resume,
+            used_in_soq=usage.used_in_soq,
+            used_in_duty=usage.used_in_duty,
+            result=payload.status if payload.status != "applied" else None,
+        )
     return updated

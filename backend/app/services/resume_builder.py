@@ -63,25 +63,31 @@ class ResumeBuilderService:
         min_score: float = 0.3,
         top_k: int = 10,
     ) -> list[Suggestion]:
-        """Rank knowledge items against a query via FTS5 search."""
-        repo = KnowledgeItemRepository(self.session)
-        matches = repo.search(query, min_score=min_score, match_all=False)
+        """Rank knowledge items against a query.
 
-        suggestions: list[Suggestion] = []
-        for match in matches:
-            if item_types and match.knowledge_item.type not in item_types:
-                continue
-            evidence_id = self._primary_evidence(match.knowledge_item.id)
-            suggestions.append(
-                Suggestion(
-                    knowledge_item=match.knowledge_item,
-                    score=match.score,
-                    evidence_id=evidence_id,
-                )
+        Routes through MatchingService so builders inherit TF-IDF
+        scoring and historical success weighting (Sprint 26).
+        """
+        from app.services.matching_service import MatchingService
+
+        matching = MatchingService(self.session)
+        results = matching.match_query(
+            query=query,
+            item_types=item_types,
+            min_score=min_score,
+            limit=top_k,
+            match_all=False,
+        )
+        return [
+            Suggestion(
+                knowledge_item=result.knowledge_item,
+                score=result.score,
+                evidence_id=(
+                    result.evidence_ids[0] if result.evidence_ids else None
+                ),
             )
-            if len(suggestions) >= top_k:
-                break
-        return suggestions
+            for result in results
+        ]
 
     def auto_build_resume(
         self,
