@@ -9,7 +9,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import applications_router, evidence_router, knowledge_router
+from app.api.v1 import (
+    applications_router,
+    evidence_router,
+    import_router,
+    knowledge_router,
+)
+from app.core.exceptions import ImportFailedError
 from app.db.connection import get_engine, init_db
 
 
@@ -65,6 +71,16 @@ async def validation_exception_handler(
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(applications_router, prefix="/api/v1")
+app.include_router(import_router, prefix="/api/v1")
+
+
+@app.exception_handler(ImportFailedError)
+async def import_failed_handler(request: Request, exc: ImportFailedError) -> JSONResponse:
+    """Return a structured error for failed imports."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.message},
+    )
 
 
 @app.get("/")

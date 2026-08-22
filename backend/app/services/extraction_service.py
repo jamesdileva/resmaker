@@ -22,6 +22,8 @@ JOB_HEADING_RE = re.compile(
     r"^(?P<role>[^-()]+?)\s*[-\u2013\u2014]\s*(?P<company>.+?)"
     r"(?:\s*\((?P<dates>[^)]+)\))?\s*$"
 )
+TEXT_BULLET_PREFIX_RE = re.compile(r"^[\s\u200b]*[\u2022\u25cf\u25aa\u25e6\u2023\u00b7]\s*|\s*-\s+\S")
+ALL_CAPS_HEADING_RE = re.compile(r"^[A-Z][A-Z &/'\-]+$")
 FIRST_PERSON_CUES = re.compile(
     r"\b(i|my|me)\b.*\b(managed|handled|performed|processed|resolved|"
     r"trained|maintained|built|presented|reviewed|prepared)\b",
@@ -95,6 +97,12 @@ class ExtractionService:
         ):
             return ParagraphType.SOQ_QUESTION
 
+        if TEXT_BULLET_PREFIX_RE.match(stripped):
+            return ParagraphType.RESUME_BULLET
+
+        if self._looks_like_all_caps_heading(stripped):
+            return ParagraphType.HEADING
+
         if FIRST_PERSON_CUES.search(stripped):
             return ParagraphType.SOQ_ANSWER
 
@@ -108,7 +116,12 @@ class ExtractionService:
         current: Optional[BulletData] = None
 
         for paragraph in paragraphs:
-            if paragraph.is_heading and not self._is_name_heading(paragraph.text):
+            kind = self.classify_paragraph(paragraph.text, paragraph)
+            heading_candidate = (
+                kind == ParagraphType.HEADING
+                or ("|" in paragraph.text and not paragraph.is_bullet)
+            )
+            if heading_candidate:
                 heading = self.parse_job_heading(paragraph.text)
                 if heading is not None:
                     current = BulletData(
@@ -118,15 +131,51 @@ class ExtractionService:
                         bullets=[],
                     )
                     groups.append(current)
-                    continue
-            if paragraph.is_bullet and current is not None:
-                current.bullets.append(paragraph.text.strip())
+                continue
+            if kind == ParagraphType.RESUME_BULLET:
+                if current is not None:
+                    cleaned = TEXT_BULLET_PREFIX_RE.sub(
+                        "", paragraph.text.strip(), count=1
+                    )
+                    current.bullets.append(cleaned.strip() or paragraph.text.strip())
 
         return [group for group in groups if group.bullets]
 
     def parse_job_heading(self, text: str) -> Optional[ExperienceHeading]:
-        """Parse 'Role - Company (Dates)' style job headings."""
-        match = JOB_HEADING_RE.match(text.strip())
+        """Parse job headings in several real-world formats.
+
+        Supported shapes:
+          - 'Role - Company (Dates)'
+          - 'Role - Company'
+          - 'Anything  |  Date range' (PDF resumes)
+        """
+        cleaned = text.strip()
+        if "|" in cleaned:
+            left, _, right = cleaned.partition("|")
+            dates = right.strip() or None
+            heading = self._parse_role_company(left.strip())
+            if heading is not None:
+                return ExperienceHeading(
+                    role=heading.role,
+                    company=heading.company,
+                    dates=heading.dates or dates,
+                )
+            if left.strip():
+                return ExperienceHeading(role=left.strip(), company="", dates=dates)
+            return None
+
+        return self._parse_role_company(cleaned)
+
+    @staticmethod
+    def _looks_like_all_caps_heading(text: str) -> bool:
+        stripped = text.strip()
+        if len(stripped) < 3 or len(stripped) > 60:
+            return False
+        return bool(ALL_CAPS_HEADING_RE.match(stripped))
+
+    @staticmethod
+    def _parse_role_company(text: str) -> Optional[ExperienceHeading]:
+        match = JOB_HEADING_RE.match(text)
         if match is None:
             return None
         return ExperienceHeading(
