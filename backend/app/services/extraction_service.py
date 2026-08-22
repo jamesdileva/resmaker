@@ -19,6 +19,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 QUESTION_PREFIX_RE = re.compile(r"^\s*question\s*\d*\s*[:.)]?", re.IGNORECASE)
 NUMBERED_QUESTION_RE = re.compile(r"^\s*\d{1,2}\s*[.)]\s+")
+LETTERED_ITEM_RE = re.compile(r"^\s*[a-z]\.\s+", re.IGNORECASE)
 QUESTION_CUE_WORDS = ("what", "how", "why", "describe", "tell", "please")
 JOB_HEADING_RE = re.compile(
     r"^(?P<role>[^-()]+?)\s*[-\u2013\u2014]\s*(?P<company>.+?)"
@@ -91,6 +92,14 @@ class ExtractionService:
                     else ParagraphType.HEADING
                 )
             if paragraph_info.is_bullet:
+                # Strong interrogative text beats bullet styling (real
+                # SOQs sometimes style questions as list items).
+                lowered_now = stripped.lower()
+                if QUESTION_PREFIX_RE.match(stripped) or re.match(
+                    r"^(describe|tell us|explain|please describe)\b",
+                    lowered_now,
+                ):
+                    return ParagraphType.SOQ_QUESTION
                 return ParagraphType.RESUME_BULLET
 
         lowered = stripped.lower()
@@ -207,36 +216,98 @@ class ExtractionService:
         )
 
     def extract_soq_paragraphs(self, paragraphs: list[Paragraph]) -> list[SOQData]:
-        """Pair SOQ question headings with their answer paragraphs."""
+        """Pair SOQ questions with their answer paragraphs.
+
+        Runs only on documents that look like SOQs (explicit question
+        paragraphs or a Statement-of-Qualifications marker), so resume
+        and duty-statement imports never produce phantom Q&A pairs.
+        Within an SOQ, any heading that is not a job heading — and any
+        numbered line that is not a full sentence — starts a new
+        answer block.
+        """
+        if not self._looks_like_soq_document(paragraphs):
+            return []
+
         pairs: list[SOQData] = []
         current_question: Optional[str] = None
         answer_parts: list[str] = []
 
         def flush() -> None:
             nonlocal current_question, answer_parts
-            if current_question is not None and answer_parts:
-                pairs.append(
-                    SOQData(
-                        question=current_question,
-                        answer=" ".join(answer_parts),
+            if current_question is not None:
+                if answer_parts:
+                    pairs.append(
+                        SOQData(
+                            question=current_question,
+                            answer=" ".join(answer_parts),
+                        )
                     )
-                )
+                elif len(current_question.split()) >= 25:
+                    # Inline prompt+answer in one paragraph (common in
+                    # finance-style SOQs): first sentence is the prompt,
+                    # the remainder is the response.
+                    sentences = re.split(r"(?<=[.!?])\s+", current_question)
+                    if len(sentences) > 1:
+                        pairs.append(
+                            SOQData(
+                                question=sentences[0],
+                                answer=" ".join(sentences[1:]),
+                            )
+                        )
             current_question = None
             answer_parts = []
 
         for paragraph in paragraphs:
             kind = self.classify_paragraph(paragraph.text, paragraph)
-            if kind in (ParagraphType.HEADING, ParagraphType.SOQ_QUESTION):
+            stripped = paragraph.text.strip()
+            if self._starts_answer_block(stripped, kind):
                 flush()
-                if kind == ParagraphType.SOQ_QUESTION:
-                    current_question = paragraph.text.strip()
-            elif kind == ParagraphType.SOQ_ANSWER and current_question is not None:
-                answer_parts.append(paragraph.text.strip())
-            elif kind == ParagraphType.NORMAL_TEXT and current_question is not None:
-                answer_parts.append(paragraph.text.strip())
+                current_question = stripped
+            elif current_question is not None and kind in (
+                ParagraphType.SOQ_ANSWER,
+                ParagraphType.NORMAL_TEXT,
+            ):
+                answer_parts.append(stripped)
 
         flush()
         return pairs
+
+    @staticmethod
+    def _starts_answer_block(text: str, kind: ParagraphType) -> bool:
+        """Decide whether a paragraph begins a new answer block."""
+        if kind == ParagraphType.SOQ_QUESTION:
+            return True
+        if NUMBERED_QUESTION_RE.match(text) or LETTERED_ITEM_RE.match(text):
+            # Any numbered/lettered line starts a block, sentence or not.
+            return True
+        if kind == ParagraphType.HEADING:
+            # Topic headers ("High-Volume Communication and Customer
+            # Service") start blocks; job headings and document titles
+            # ("Statement of Qualifications") do not.
+            lowered = text.strip().lower()
+            if "statement of qualification" in lowered:
+                return False
+            return ExtractionService().parse_job_heading(text) is None
+        return False
+
+    @staticmethod
+    def _looks_like_soq_document(paragraphs: list[Paragraph]) -> bool:
+        markers = ("statement of qualification", "soq")
+        head_text = " ".join(p.text.lower() for p in paragraphs[:6])
+        if any(marker in head_text for marker in markers):
+            return True
+        if any(
+            NUMBERED_QUESTION_RE.match(p.text.strip()) for p in paragraphs
+        ):
+            # Numbered-section SOQs. Duty statements also match this,
+            # but their numbered lines run back-to-back with nothing to
+            # capture, so pairing simply yields nothing for them.
+            return True
+        return any(
+            ExtractionService().classify_paragraph(p.text, p)
+            == ParagraphType.SOQ_QUESTION
+            for p in paragraphs
+        )
 
     def extract_skills(self, text: str) -> list[str]:
         """Extract standalone skill phrases from cue phrases and a lexicon."""
