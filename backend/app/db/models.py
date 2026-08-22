@@ -209,6 +209,23 @@ class ApplicationEvidenceLink(SQLModel, table=True):
     result: str | None = None  # "interview" | "offer" | "rejected"
 
 
+class TfidfVector(SQLModel, table=True):
+    """Cached sparse TF-IDF vector for one knowledge item.
+
+    ``key`` holds a knowledge item id, or ``__index_meta__`` for the
+    single row storing the fitted IDF vocabulary.
+    """
+
+    __tablename__ = "tfidf_vectors"
+
+    key: str = Field(primary_key=True)
+    vector_json: dict[str, float] = Field(
+        default={}, sa_column=Column("vector", JSON)
+    )
+    norm: float = 0.0
+    built_at: datetime = Field(default_factory=_utcnow)
+
+
 __all__ = [
     "SourceDocument",
     "Evidence",
@@ -225,4 +242,5 @@ __all__ = [
     "JobPosting",
     "Application",
     "ApplicationEvidenceLink",
+    "TfidfVector",
 ]
