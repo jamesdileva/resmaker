@@ -1,4 +1,4 @@
-﻿# Career OS — Implementation Guide
+# Career OS — Implementation Guide
 
 > **Version:** 1.0
 > **Status:** Draft — Sprint 0 (Pre-MVP)
@@ -542,7 +542,7 @@ Uses `reportlab` for programmatic PDF generation. Limited formatting in MVP.
 
 ### 10.4. File Saving
 
-Backend writes to a temp directory, returns file path. Frontend invokes Tauri command `save_file_dialog` to prompt user.
+Backend writes to a temp directory, returns file path. Frontend invokes an Electron `dialog.showSaveDialog` (via IPC) to prompt the user.
 
 ---
 

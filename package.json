@@ -1,0 +1,7 @@
+{
+  "name": "resmaker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Career OS - deterministic career knowledge platform",
+  "workspaces": ["frontend"]
+}

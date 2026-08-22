@@ -1,4 +1,4 @@
-﻿# Career OS — Master Architecture
+# Career OS — Master Architecture
 
 > **Version:** 1.0
 > **Status:** Draft — Sprint 0 (Pre-MVP)
@@ -146,7 +146,7 @@ These are the "constitution" of Career OS. They must be upheld in every decision
 - Export documents in DOCX, PDF, and TXT formats
 - Validate outputs against completeness and keyword coverage rules
 - Optional local LLM for grammar and transition polishing only
-- Ship as a desktop application (Tauri) with a local web server backend
+- Ship as a desktop application (Electron) with a local web server backend
 
 ### Should-Have (Post-MVP)
 
@@ -196,7 +196,7 @@ The MVP is the minimal set of features that demonstrates the core value proposit
 | Export Pipeline (DOCX, PDF, TXT) | Core |
 | Validation Engine (completeness, keyword coverage) | Core |
 | Local LLM Integration (grammar, transitions only) | Optional (feature-flagged) |
-| Tauri desktop packaging | Core |
+| Electron desktop packaging | Core |
 
 ### Out of Scope (MVP)
 
@@ -228,7 +228,7 @@ The MVP is complete when a user can:
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER (Desktop App)                       │
 │                    ┌─────────────────────────────────┐         │
-│                    │        Frontend (React/Tauri)   │         │
+│                    │        Frontend (React/Electron)   │         │
 │                    │  Dashboard, Explorer, Builders  │         │
 │                    └────────────┬────────────────────┘         │
 └─────────────────────────────────┼──────────────────────────────┘
@@ -341,22 +341,22 @@ Experience / Project / Education
 | shadcn/ui | 0.6+ | Component library |
 | React Query | 5.0+ | Server state management |
 | Vitest | 1.2+ | Frontend testing |
-| Tauri | 2.0+ | Desktop packaging |
+| Electron | 30+ | Desktop shell and packaging |
 
 ### Infrastructure
 
 | Technology | Purpose |
 |------------|---------|
 | SQLite | Local database (embedded) |
-| Tauri CLI | Desktop app packaging |
-| Rust (via Tauri) | Desktop shell |
+| electron-builder | Distributable packaging |
+| Node.js | Build tooling and Electron host runtime |
 | Ollama | Local LLM service (optional, feature-flagged) |
 
 ### Why This Stack
 
 - **Python + FastAPI**: The document processing ecosystem (python-docx, pymupdf) is unmatched in Python. FastAPI's type safety and async support make it ideal for the service layer. SQLModel bridges pydantic and SQLAlchemy cleanly.
-- **React + TypeScript**: Industry standard for desktop app UIs (via Tauri). TypeScript catches errors early in the builder workflows.
-- **Tauri**: Lightweight desktop packaging with a secure Rust sandbox. Produces smaller distributables than alternative web-view wrappers.
+- **React + TypeScript**: Industry standard for desktop app UIs (via Electron). TypeScript catches errors early in the builder workflows.
+- **Electron**: Mature desktop packaging with a bundled Chromium runtime and a proven automated-testing path (CDP). Larger distributables than Rust-based wrappers, but no native toolchain requirement.
 - **SQLite**: Single-file, zero-config, fast enough for a personal knowledge base. FTS5 handles full-text search natively.
 - **Ollama**: Runs LLMs locally with a clean HTTP API. Perfect for the optional AI layer.
 
@@ -436,7 +436,7 @@ ResMaker/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── main.tsx                  # React entry point (Tauri)
+│   │   ├── main.tsx                  # React entry point (Electron renderer)
 │   │   ├── app.tsx                   # Root component
 │   │   ├── api/                      # Axios client + typed hooks
 │   │   │   ├── client.ts
@@ -472,14 +472,14 @@ ResMaker/
 │   │   └── lib/
 │   │       └── utils.ts
 │   ├── public/
-│   ├── tauri.conf.ts
+│   ├── electron/main.cjs
 │   ├── vite.config.ts
 │   ├── package.json
 │   └── tsconfig.json
 ├── scripts/
 │   ├── dev.py                         # Run both backend + frontend in dev mode
 │   ├── build.py                       # Build all artifacts
-│   └── release.py                     # Package Tauri release
+│   └── release.py                     # Package Electron release
 ├── AGENTS.md                          # Project rules for AI agents
 ├── .python-version
 ├── pyproject.toml                     # Root pyproject (workspace)
@@ -553,7 +553,7 @@ The backend is the brain of Career OS. It handles all business logic, data persi
 ### Notes
 
 - The backend starts as a single FastAPI app. Services are plain Python classes (not separate processes) for simplicity.
-- The API runs on `http://localhost:8000` in development. In production, Tauri proxies API requests.
+- The API runs on `http://localhost:8000` in development. In production, the Electron main process hosts the built frontend and targets the local API.
 - All business logic must live in services. API routers should only handle request/response mapping and dependency injection.
 
 ---
@@ -561,7 +561,7 @@ The backend is the brain of Career OS. It handles all business logic, data persi
 
 ### Purpose
 
-The frontend is a thin, reactive presentation layer that runs inside a Tauri desktop shell. It communicates with the backend via HTTP REST API and invokes Tauri commands for filesystem access (file dialogs, saving exported documents).
+The frontend is a thin, reactive presentation layer that runs inside an Electron desktop shell. It communicates with the backend via HTTP REST API and invokes Electron IPC for filesystem access (file dialogs, saving exported documents).
 
 ### Responsibilities
 
@@ -616,7 +616,7 @@ The frontend is a thin, reactive presentation layer that runs inside a Tauri des
 ### Notes
 
 - The frontend uses React Query to manage server state. No Redux or Zustand needed.
-- Tauri commands are used only for file system operations (open/save dialogs, saving exports). All other data flows through the REST API.
+- Electron IPC is used only for file system operations (open/save dialogs, saving exports). All other data flows through the REST API.
 - Components are built with shadcn/ui for consistency. Domain-specific components extend the base.
 
 ---
@@ -1152,7 +1152,7 @@ The Export Pipeline takes assembled content from any Builder (Resume, SOQ, Duty 
 - Accept structured content from Builders
 - Apply format-specific templates and formatting rules
 - Render output in DOCX, PDF, or TXT
-- Save the output file to disk (via Tauri command) or return as download
+- Save the output file to disk (via Electron save dialog) or return as download
 
 ### Inputs
 
@@ -1174,7 +1174,7 @@ The Export Pipeline takes assembled content from any Builder (Resume, SOQ, Duty 
 | PdfExporter | Generates PDF (via reportlab or wkhtmltopdf) |
 | TxtExporter | Generates plain text with minimal formatting |
 | FormatValidator | Validates output against format requirements |
-| FileSaver | Tauri command to save file to disk |
+| FileSaver | Electron save dialog to write file to disk |
 
 ### Future Expansion
 
@@ -1336,7 +1336,7 @@ Configuration manages all user preferences, system settings, and feature flags.
 
 ### Notes
 
-- Configuration is stored in the user's app data directory (Tauri resolves the path platform-appropriately).
+- Configuration is stored in the user's app data directory (the Electron main process resolves it via app.getPath('userData')).
 - Environment variables override all other settings for CI/CD and testing.
 
 ---
@@ -1411,7 +1411,7 @@ Security ensures that user data is protected at rest and in transit.
 ### Notes
 
 - The backend starts with localhost binding only (`127.0.0.1:8000`). No remote access by default.
-- Tauri enforces a strict Content Security Policy (CSP) and blocks all remote requests from the frontend.
+- The Electron main process enforces contextIsolation, disables nodeIntegration in renderers, and blocks navigation away from the local origins.
 
 ---
 ## 25. Performance

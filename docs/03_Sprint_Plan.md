@@ -1,4 +1,4 @@
-﻿# Career OS — Sprint Plan
+# Career OS — Sprint Plan
 
 > **Version:** 1.1
 > **Status:** Draft — Pre-MVP
@@ -310,7 +310,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 ### Sprint 6 — Frontend Scaffolding
 
-**Objective:** Set up the React + TypeScript + Vite + Tauri frontend project with routing and layout.
+**Objective:** Set up the React + TypeScript + Vite + Electron frontend project with routing and layout.
 
 **Files Created:**
 - `frontend/package.json`
@@ -321,7 +321,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 - `frontend/src/routes/index.tsx`
 - `frontend/src/pages/Dashboard.tsx`
 - `frontend/src/components/layout.tsx`
-- `frontend/tauri.conf.ts`
+- `frontend/electron/main.cjs`
 - `frontend/src/types/index.ts` (shared types)
 
 **Files Modified:**
@@ -333,7 +333,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 **Frontend Changes:**
 - Vite + React + TypeScript project
-- Tauri configuration
+- Electron main process (BrowserWindow loading the Vite dev server)
 - Basic routing (Dashboard as default route)
 - Layout component (sidebar, header)
 - Shared TypeScript types matching backend schemas
@@ -343,7 +343,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 **Acceptance Criteria:**
 - `npm install` (in frontend/) succeeds
 - `npm run dev` starts the Vite dev server
-- Tauri dev mode works (`npm run tauri dev`)
+- Electron window works (`npm run electron:dev`)
 - Dashboard page renders with placeholder content
 - TypeScript compiles without errors
 - Shared types are compatible with backend schemas
@@ -351,10 +351,10 @@ Create all tables from the schema in Implementation Guide Section 1:
 **Manual Testing:**
 1. Run `cd frontend && npm install`
 2. Run `npm run dev` — Vite starts on port 5173
-3. Run `npm run tauri dev` — Tauri window opens
+3. Run `npm run electron:dev` — Electron window opens showing Dashboard
 4. Verify Dashboard page loads
 
-**Definition of Done:** Frontend project runs in both browser dev mode and Tauri dev mode, Dashboard renders.
+**Definition of Done:** Frontend project runs in both browser dev mode and Electron dev mode, Dashboard renders.
 
 **Estimated Time:** 90 minutes
 
@@ -1470,7 +1470,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 **Frontend Changes:**
 - `ExportToolbar`: buttons for DOCX, PDF, TXT export formats
 - `ExportDialog`: format selection, traceability toggle, save location
-- `useExport` hook: calls `/api/v1/export/`, handles file saving via Tauri
+- `useExport` hook: calls `/api/v1/export/`, handles file saving via Electron save dialog
 - Integration in all three builder pages
 - Loading state and success/error notifications
 
@@ -1481,7 +1481,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 - All three builder pages have an Export button
 - Export dialog shows format options (DOCX, TXT; PDF is stub)
 - Export calls the API with correct format and document_id
-- Exported file is saved to disk (via Tauri or download in dev mode)
+- Exported file is saved to disk (via Electron save dialog or download in dev mode)
 - Success notification appears after export
 - Error handling for failed exports
 
@@ -1682,7 +1682,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 ### Sprint 32 — MVP Release & Packaging
 
-**Objective:** Package the Tauri desktop application, create build scripts, and finalize documentation.
+**Objective:** Package the Electron desktop application, create build scripts, and finalize documentation.
 
 **Files Created:**
 - `scripts/build.py` (build script)
@@ -1696,7 +1696,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 **Files Modified:**
 - `AGENTS.md` (final review)
 - `docs/01_Master_Architecture.md` (update changelog section)
-- `frontend/tauri.conf.ts` (final build config)
+- `frontend/electron/main.cjs` (final production config)
 - `backend/pyproject.toml` (final dependencies)
 
 **Database Changes:** None.
@@ -1708,14 +1708,14 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 **Frontend Changes:**
 - Production build script
-- Tauri build configuration
+- electron-builder configuration
 - Error boundaries for all pages
 
 **API Endpoints:** N/A.
 
 **Acceptance Criteria:**
 - `scripts/dev.py` starts both backend and frontend in dev mode
-- `scripts/build.py` builds the Tauri application for current platform
+- `scripts/build.py` builds the Electron application for current platform
 - `scripts/release.py` creates distributable package
 - Application installs and runs on target platform
 - All documentation is up to date
@@ -1723,7 +1723,7 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 **Manual Testing:**
 1. Run `python scripts/dev.py` → backend + frontend start
-2. Run `python scripts/build.py` → Tauri app builds successfully
+2. Run `python scripts/build.py` → Electron app builds successfully
 3. Install and run the built application
 4. Import a sample document → verify end-to-end flow works
 5. Review all docs are current

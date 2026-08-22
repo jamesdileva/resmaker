@@ -1,0 +1,30 @@
+{
+  "name": "career-os-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Career OS desktop frontend (Electron + React + Vite)",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "electron:dev": "concurrently -k -s first \"vite\" \"wait-on tcp:127.0.0.1:5173 && electron .\"",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "concurrently": "^9.0.1",
+    "electron": "^33.0.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "wait-on": "^8.0.1"
+  }
+}
