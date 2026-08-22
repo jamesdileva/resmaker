@@ -9,6 +9,8 @@ from docx.shared import Inches
 
 from app.parsers.base import BaseParser
 from app.parsers.docx_parser import DocxParser
+from app.parsers.pdf_parser import PdfParser
+from app.parsers.txt_parser import TxtParser
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -116,6 +118,104 @@ def test_soq_question_answer_structure(soq_doc: str) -> None:
 def test_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         DocxParser().parse(str(tmp_path / "does_not_exist.docx"))
+
+
+# --- PDF parser (Sprint 9) ---
+
+
+@pytest.fixture()
+def pdf_doc() -> str:
+    return str(FIXTURES / "sample_posting.pdf")
+
+
+def test_pdf_parser_implements_interface(pdf_doc: str) -> None:
+    parser = PdfParser()
+    assert isinstance(parser, BaseParser)
+    assert parser.supported_types() == ["pdf"]
+
+
+def test_pdf_parse_extracts_all_text(pdf_doc: str) -> None:
+    result = PdfParser().parse(pdf_doc)
+    assert result.filename == "sample_posting.pdf"
+    assert result.file_type == "pdf"
+    assert len(result.paragraphs) >= 3
+    joined = " ".join(p.text for p in result.paragraphs)
+    assert "Office Technician" in joined
+    assert "confidential files" in joined
+    assert "written communication skills" in joined
+
+
+def test_pdf_paragraphs_are_normal_style(pdf_doc: str) -> None:
+    result = PdfParser().parse(pdf_doc)
+    assert all(p.style == "Normal" for p in result.paragraphs)
+    assert all(not p.is_bullet and not p.is_heading for p in result.paragraphs)
+
+
+def test_missing_pdf_raises(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        PdfParser().parse(str(tmp_path / "missing.pdf"))
+
+
+# --- TXT parser (Sprint 9) ---
+
+
+@pytest.fixture()
+def duty_txt() -> str:
+    return str(FIXTURES / "sample_duty.txt")
+
+
+def test_txt_parser_implements_interface(duty_txt: str) -> None:
+    parser = TxtParser()
+    assert isinstance(parser, BaseParser)
+    assert parser.supported_types() == ["txt"]
+
+
+def test_txt_parse_returns_all_lines(duty_txt: str) -> None:
+    result = TxtParser().parse(duty_txt)
+    assert result.filename == "sample_duty.txt"
+    assert result.file_type == "txt"
+
+    texts = [p.text for p in result.paragraphs]
+    # Blank lines are skipped; all content lines are present.
+    assert len(texts) == 5
+    assert texts[0] == "Duty Statement - Office Technician"
+    assert any("confidential documents" in t for t in texts)
+
+
+def test_txt_lines_are_normal_style(duty_txt: str) -> None:
+    result = TxtParser().parse(duty_txt)
+    assert all(p.style == "Normal" for p in result.paragraphs)
+    assert all(not p.is_bullet and not p.is_heading for p in result.paragraphs)
+
+
+def test_missing_txt_raises(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        TxtParser().parse(str(tmp_path / "missing.txt"))
+
+
+# --- Parser factory (Sprint 9) ---
+
+
+def test_get_parser_dispatches_by_type() -> None:
+    from app.parsers import get_parser
+
+    assert isinstance(get_parser("docx"), DocxParser)
+    assert isinstance(get_parser("pdf"), PdfParser)
+    assert isinstance(get_parser("txt"), TxtParser)
+
+
+def test_get_parser_is_case_insensitive_and_strips_dot() -> None:
+    from app.parsers import get_parser
+
+    assert isinstance(get_parser("DOCX"), DocxParser)
+    assert isinstance(get_parser(".Pdf"), PdfParser)
+
+
+def test_get_parser_unknown_raises_value_error() -> None:
+    from app.parsers import get_parser
+
+    with pytest.raises(ValueError):
+        get_parser("xlsx")
 
 
 def test_bullet_detected_from_numbering_xml(tmp_path: Path) -> None:
