@@ -14,7 +14,6 @@ from app.db.models import (
     KnowledgeItem,
 )
 
-
 @pytest.fixture()
 def session(tmp_path: Path):
     """Yield a session over a freshly initialized temp database."""
@@ -32,6 +31,14 @@ def client(tmp_path: Path, monkeypatch):
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def api_session(client, tmp_path: Path):
+    """Session over the same database the API client uses."""
+    engine = get_engine(str(tmp_path / "api_test.db"))
+    with Session(engine) as sess:
+        yield sess
 
 
 def make_knowledge_item(

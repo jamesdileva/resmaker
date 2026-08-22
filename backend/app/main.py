@@ -11,11 +11,12 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1 import (
     applications_router,
+    build_router,
     evidence_router,
     import_router,
     knowledge_router,
 )
-from app.core.exceptions import ImportFailedError
+from app.core.exceptions import AppError
 from app.db.connection import get_engine, init_db
 
 
@@ -72,11 +73,12 @@ app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(applications_router, prefix="/api/v1")
 app.include_router(import_router, prefix="/api/v1")
+app.include_router(build_router, prefix="/api/v1")
 
 
-@app.exception_handler(ImportFailedError)
-async def import_failed_handler(request: Request, exc: ImportFailedError) -> JSONResponse:
-    """Return a structured error for failed imports."""
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """Return structured errors for expected application failures."""
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.message},

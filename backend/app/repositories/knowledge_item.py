@@ -1,5 +1,6 @@
 """Knowledge item repository with FTS5-backed search."""
 
+import re
 from typing import Optional
 
 from pydantic import BaseModel
@@ -43,13 +44,25 @@ class KnowledgeItemRepository(BaseRepository[KnowledgeItem]):
         stmt = stmt.offset(skip).limit(limit).order_by(KnowledgeItem.created_at)
         return list(self.session.exec(stmt))
 
-    def search(self, query: str, min_score: float = 0.0) -> list[MatchResult]:
+    def search(
+        self,
+        query: str,
+        min_score: float = 0.0,
+        match_all: bool = True,
+    ) -> list[MatchResult]:
         """Full-text search ranked by normalized BM25 relevance.
 
-        Scores are mapped from FTS5 rank (negative, lower is better)
-        to a 0.0-1.0 scale via 1 / (1 - rank).
+        The query is tokenized. With match_all=True every token must
+        appear in the item (implicit AND); otherwise any token matches
+        (OR), which suits suggestion/recall workloads. Scores are mapped
+        from FTS5 rank (negative, lower is better) to a 0.0-1.0 scale
+        via 1 / (1 - rank).
         """
-        escaped = query.replace('"', '""')
+        tokens = re.findall(r"[A-Za-z0-9]+", query)
+        if not tokens:
+            return []
+        separator = " " if match_all else " OR "
+        fts_query = separator.join(tokens)
         sql = text(
             "SELECT ki.*, fts.rank AS fts_rank "
             "FROM knowledge_items_fts fts "
@@ -57,7 +70,7 @@ class KnowledgeItemRepository(BaseRepository[KnowledgeItem]):
             "WHERE knowledge_items_fts MATCH :q "
             "ORDER BY fts.rank"
         )
-        rows = self.session.execute(sql, {"q": f'"{escaped}"'}).mappings().all()
+        rows = self.session.execute(sql, {"q": fts_query}).mappings().all()
         results = []
         for row in rows:
             score = 1.0 / (1.0 + abs(row["fts_rank"]))
