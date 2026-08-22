@@ -68,7 +68,37 @@ export function UIContextProvider({ children }: ProviderProps) {
     [theme, sidebarCollapsed, toggleSidebar, toasts, toast, dismissToast],
   );
 
-  return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
+  return (
+    <UIContext.Provider value={value}>
+      {children}
+      <div role="status" aria-live="polite">
+        {toasts.map((entry) => (
+          <div
+            key={entry.id}
+            role={entry.kind === 'error' ? 'alert' : 'status'}
+            style={{
+              position: 'fixed',
+              bottom: 16,
+              right: 16,
+              padding: '10px 14px',
+              borderRadius: 6,
+              color: '#fff',
+              background:
+                entry.kind === 'error'
+                  ? '#dc2626'
+                  : entry.kind === 'warning'
+                    ? '#d97706'
+                    : '#16a34a',
+              marginBottom: 8,
+              maxWidth: 360,
+            }}
+          >
+            {entry.text}
+          </div>
+        ))}
+      </div>
+    </UIContext.Provider>
+  );
 }
 
 export function useUI(): UIContextType {
