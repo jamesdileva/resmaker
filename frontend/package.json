@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron:dev": "concurrently -k -s first \"vite\" \"wait-on tcp:127.0.0.1:5173 && electron .\"",
-    "start": "electron ."
+    "start": "electron .",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
   },
   "dependencies": {
     "axios": "^1.7.7",
@@ -28,10 +30,36 @@
     "@vitejs/plugin-react": "^4.3.2",
     "concurrently": "^9.0.1",
     "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
     "jsdom": "^25.0.0",
     "typescript": "^5.6.2",
     "vite": "^5.4.8",
     "vitest": "^2.1.1",
     "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.careeros.app",
+    "productName": "Career OS",
+    "electronVersion": "33.4.11",
+    "electronDist": "../node_modules/electron/dist",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**",
+      "electron/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
