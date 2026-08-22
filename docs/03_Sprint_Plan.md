@@ -1766,6 +1766,33 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 **Definition of Done:** Sentinel discovers, launches, and asserts Career OS end-to-end without manual steps.
 
+**Detailed Scope (planned 2026-08-22):**
+
+*Part A — Tier 0 (zero code, user-side):* add `C:\Users\j\Projects\ResMaker` to Sentinel watch dirs; confirm discovery + extracted commands on the dashboard. Sentinel's manifest extractors should pick up pytest from `backend/pyproject.toml` (`[tool.pytest.ini_options]`) and npm scripts from `frontend/package.json`.
+
+*Part B — Tier 1 HTTP tester (Sentinel repo):* new `career_os.py` tester. Verified ground truth to encode in the docstring:
+```
+Verified ground truth (2026-08-22):
+- launch: backend\.venv\Scripts\python -m uvicorn app.main:app --port 8000
+  (cwd=backend; venv must exist — created via pip install -e ".[dev]")
+- port 8000, no auth
+- GET / -> {"status":"ok"}; GET /health -> {"status":"healthy"}
+- fallback: scripts/dev.py --backend-only starts the same server
+```
+Assertions: `/health` 200+body marker, `/` 200+body, plus one representative POST per major group (`/search/`, `/build/suggest`, `/validate/`) using seeded temp data so assertions are corpus-independent where practical.
+
+*Part C — Tier 2 Electron click-through feature (stretch, Sentinel repo):*
+Engine: Electron/CDP per `integration.md` (Tauri explicitly skipped). Facts verified live during Sprint 32 packaging:
+- Packaged exe: `frontend/dist/win-unpacked/Career OS.exe`
+- **Process name is `Career OS`, not `electron`** (electron-builder renames it)
+- Window title: `Career OS`; blank-white regression risk documented (Vite `base:'./'` fix)
+- Renderer calls the backend over HTTP; launch backend first for a populated UI
+Feature steps: taskkill by image name → launch packaged exe with `--remote-debugging-port=<port>` → CDP connect → assert dashboard renders (non-blank gate) → optionally navigate to Explorer (`#/explore`) and screenshot search results against a running backend.
+
+*Part D — wrap-up:* targeted tests green + lint + full Sentinel gate; restart server, live E2E, non-blank screenshots; changelog rows here + `integration.md`.
+
+**Open questions at planning time:** (1) whether the user's Sentinel instance already indexes this machine (Part A may be pre-done); (2) whether Part C ships in this sprint or follows once Tier 1 is stable.
+
 **Dependencies:** All previous sprints.
 
 ---
