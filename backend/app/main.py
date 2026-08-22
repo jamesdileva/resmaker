@@ -15,6 +15,8 @@ from app.api.v1 import (
     evidence_router,
     import_router,
     knowledge_router,
+    match_router,
+    search_router,
 )
 from app.core.exceptions import AppError
 from app.db.connection import get_engine, init_db
@@ -74,6 +76,8 @@ app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(applications_router, prefix="/api/v1")
 app.include_router(import_router, prefix="/api/v1")
 app.include_router(build_router, prefix="/api/v1")
+app.include_router(search_router, prefix="/api/v1")
+app.include_router(match_router, prefix="/api/v1")
 
 
 @app.exception_handler(AppError)
