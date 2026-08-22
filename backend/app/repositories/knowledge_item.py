@@ -68,6 +68,21 @@ class KnowledgeItemRepository(BaseRepository[KnowledgeItem]):
                 results.append(MatchResult(knowledge_item=item, score=score))
         return results
 
+    def count(
+        self,
+        type: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> int:
+        """Total number of knowledge items, honoring optional filters."""
+        from sqlalchemy import func
+
+        stmt = select(func.count()).select_from(KnowledgeItem)
+        if type is not None:
+            stmt = stmt.where(KnowledgeItem.type == type)
+        if category is not None:
+            stmt = stmt.where(KnowledgeItem.category == category)
+        return self.session.execute(stmt).scalar_one()
+
     def update(self, item_id: str, data: dict) -> Optional[KnowledgeItem]:
         item = self.get(item_id)
         if item is None:

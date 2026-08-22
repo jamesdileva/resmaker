@@ -5,9 +5,11 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1 import applications_router, evidence_router, knowledge_router
 from app.db.connection import get_engine, init_db
 
 
@@ -44,6 +46,25 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=500,
         content={"error": "Internal server error", "path": str(request.url.path)},
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Return a structured 400 for request validation failures."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "Validation error",
+            "details": exc.errors(),
+        },
+    )
+
+
+app.include_router(knowledge_router, prefix="/api/v1")
+app.include_router(evidence_router, prefix="/api/v1")
+app.include_router(applications_router, prefix="/api/v1")
 
 
 @app.get("/")
