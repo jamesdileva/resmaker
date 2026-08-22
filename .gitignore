@@ -18,6 +18,10 @@ htmlcov/
 *.db
 *.sqlite3
 
+# Personal documents (never commit user career data)
+resumes/
+soqs/
+
 # Environment / secrets
 .env
 .env.*
