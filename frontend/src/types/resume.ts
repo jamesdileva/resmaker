@@ -35,4 +35,5 @@ export interface BuiltDocument {
   sections: RenderedSection[];
   traceability: Record<string, string>;
   warnings: string[];
+  metadata?: Record<string, string>;
 }

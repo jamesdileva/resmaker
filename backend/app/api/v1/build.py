@@ -48,6 +48,18 @@ def build_resume(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/analyze-question")
+def analyze_soq_question(payload: dict, session: Session = Depends(get_session)) -> dict:
+    """Classify an SOQ question and extract its keywords."""
+    from app.services.soq_analyzer import SOQAnalyzer
+
+    question = str(payload.get("question", ""))
+    if not question.strip():
+        raise ValidationAppError("Question is required")
+    analysis = SOQAnalyzer().analyze(question)
+    return analysis.model_dump()
+
+
 @router.post("/soq", response_model=BuiltDocument)
 def build_soq(
     payload: BuildSoqRequest, session: Session = Depends(get_session)

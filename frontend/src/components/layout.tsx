@@ -23,6 +23,9 @@ export function Layout() {
             <li>
               <NavLink to="/resume">Resume Builder</NavLink>
             </li>
+            <li>
+              <NavLink to="/soq">SOQ Builder</NavLink>
+            </li>
           </ul>
         </nav>
       </aside>

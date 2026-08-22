@@ -18,6 +18,8 @@ from app.parsers.base import Paragraph
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 QUESTION_PREFIX_RE = re.compile(r"^\s*question\s*\d*\s*[:.)]?", re.IGNORECASE)
+NUMBERED_QUESTION_RE = re.compile(r"^\s*\d{1,2}\s*[.)]\s+")
+QUESTION_CUE_WORDS = ("what", "how", "why", "describe", "tell", "please")
 JOB_HEADING_RE = re.compile(
     r"^(?P<role>[^-()]+?)\s*[-\u2013\u2014]\s*(?P<company>.+?)"
     r"(?:\s*\((?P<dates>[^)]+)\))?\s*$"
@@ -97,6 +99,9 @@ class ExtractionService:
         ):
             return ParagraphType.SOQ_QUESTION
 
+        if self._looks_like_numbered_question(stripped):
+            return ParagraphType.SOQ_QUESTION
+
         if TEXT_BULLET_PREFIX_RE.match(stripped):
             return ParagraphType.RESUME_BULLET
 
@@ -172,6 +177,16 @@ class ExtractionService:
         if len(stripped) < 3 or len(stripped) > 60:
             return False
         return bool(ALL_CAPS_HEADING_RE.match(stripped))
+
+    @staticmethod
+    def _looks_like_numbered_question(text: str) -> bool:
+        """Detect numbered SOQ questions like '1. Considering the attached...'."""
+        if not NUMBERED_QUESTION_RE.match(text):
+            return False
+        if text.rstrip().endswith("?"):
+            return True
+        lowered = text.lower()
+        return any(word in lowered for word in QUESTION_CUE_WORDS)
 
     @staticmethod
     def _parse_role_company(text: str) -> Optional[ExperienceHeading]:

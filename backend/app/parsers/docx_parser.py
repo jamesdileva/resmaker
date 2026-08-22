@@ -54,7 +54,9 @@ class DocxParser(BaseParser):
             raise FileNotFoundError(f"DOCX file not found: {file_path}")
         document: DocumentObject = Document(str(path))
 
-        paragraphs = [self._parse_paragraph(p) for p in document.paragraphs]
+        paragraphs: list[Paragraph] = []
+        for docx_paragraph in document.paragraphs:
+            paragraphs.extend(self._parse_paragraph(docx_paragraph))
         paragraphs = [p for p in paragraphs if p.text.strip() or p.is_bullet]
 
         return ParsedDocument(
@@ -66,7 +68,8 @@ class DocxParser(BaseParser):
     def supported_types(self) -> list[str]:
         return ["docx"]
 
-    def _parse_paragraph(self, paragraph: DocxParagraph) -> Paragraph:
+    def _parse_paragraph(self, paragraph: DocxParagraph) -> list[Paragraph]:
+        """Parse one DOCX paragraph, splitting on embedded line breaks."""
         style_name = paragraph.style.name if paragraph.style is not None else "Normal"
         has_numbering, list_level = _numbering_info(paragraph)
 
@@ -93,11 +96,18 @@ class DocxParser(BaseParser):
             else:
                 bullet_level = _indent_level(paragraph) + 1
 
-        return Paragraph(
-            text=paragraph.text,
-            style=style_name,
-            is_bullet=is_bullet,
-            bullet_level=bullet_level,
-            is_heading=is_heading,
-            heading_level=heading_level,
-        )
+        # Soft line breaks (<w:br>) surface as newlines inside .text;
+        # each line becomes its own paragraph.
+        lines = [line.strip() for line in paragraph.text.split("\n")]
+        return [
+            Paragraph(
+                text=line,
+                style=style_name,
+                is_bullet=is_bullet,
+                bullet_level=bullet_level,
+                is_heading=is_heading,
+                heading_level=heading_level,
+            )
+            for line in lines
+            if line
+        ]
