@@ -1,0 +1,34 @@
+{
+  "Customer Service": [
+    "customer",
+    "service",
+    "complaint",
+    "complaints",
+    "inquiries",
+    "inquiry",
+    "satisfaction",
+    "resolution"
+  ],
+  "Analysis": [
+    "analysis",
+    "data",
+    "report",
+    "reports",
+    "excel",
+    "sql",
+    "dashboard",
+    "dashboards",
+    "statistical",
+    "research"
+  ],
+  "Confidential Information": [
+    "confidential",
+    "privacy",
+    "private data",
+    "sensitive",
+    "records",
+    "verification",
+    "compliance",
+    "filing"
+  ]
+}

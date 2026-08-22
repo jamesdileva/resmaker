@@ -1,0 +1,6 @@
+{
+  "analytical": ["analysis", "analyze", "research", "reports", "problem solving"],
+  "confidential": ["privacy", "records", "customer data", "verification", "documentation"],
+  "communication": ["customer service", "interpersonal", "written", "verbal"],
+  "leadership": ["supervision", "team management", "mentorship", "guidance"]
+}
