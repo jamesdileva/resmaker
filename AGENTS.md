@@ -107,3 +107,11 @@ When a sprint changes the architecture or API:
 2. Update `docs/01_Master_Architecture.md` if the change affects architecture decisions
 3. Add a changelog entry to the relevant sprint in `docs/03_Sprint_Plan.md`
 4. Update `AGENTS.md` if the change affects project rules
+
+---
+
+## Changelog
+
+| Sprint | Date | Accomplished |
+|--------|------|--------------|
+| Sprint 1 — Project Scaffolding | 2026-08-21 | Created `backend/pyproject.toml` (canonical deps, `career-os-serve` script, pytest config), `backend/app/main.py` (FastAPI app, `GET /`, `GET /health`, CORS for Vite dev origins, structured exception handler), `.python-version` (3.11), health-check tests (`backend/tests/test_main.py`), generated `backend/requirements.txt` lock. All acceptance criteria verified: editable install, pytest 2/2 passed, uvicorn boots, both endpoints + Swagger UI return 200. Sprint 33 (Sentinel integration testers) added to sprint plan, deferred to end per `integration.md`. |

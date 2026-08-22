@@ -47,7 +47,7 @@ Each sprint follows this template:
 | Phase 8 | 27-28 | Export pipeline: DOCX/TXT exporters, UI |
 | Phase 9 | 29 | Validation engine |
 | Phase 10 | 30 | LLM integration (optional) |
-| Phase 11 | 31-32 | E2E tests + MVP release |
+| Phase 11 | 31-33 | E2E tests + MVP release + Sentinel integration testers |
 
 ---
 ## Phase 0: Foundation (Sprints 1-5)
@@ -1736,6 +1736,40 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 ---
 
+### Sprint 33 — Sentinel Integration Testers
+
+**Objective:** Register Career OS with Sentinel by writing Tier 1 HTTP testers covering the full API surface, so Sentinel can launch, smoke-test, and feature-test the app automatically.
+
+> **Deferral note:** Intentionally scheduled last. Per `integration.md`, tester facts (launch command, port, auth, served routes) must be verified live against the finished app, and batching all API assertions into one sprint avoids churn across 32 evolving sprints. Pytest suites remain per-sprint throughout (AGENTS.md rule 6); this sprint covers Sentinel-side testing only.
+
+**Inputs:**
+- Completed Sprints 1-32 (full API surface, see Implementation Guide Section 2)
+- `integration.md` (Sentinel integration checklist)
+- Verified live facts: launch command, port 8000, no auth, `GET /health` body marker
+
+**Outputs:**
+- Tier 1 HTTP tester module registered in the Sentinel repo (`backend/app/testers/career-os.py`)
+- Verified ground-truth block in the tester docstring (launch, port, auth, fallback)
+- Updated `integration.md` section documenting the Career OS integration pattern
+
+**Files Created:** None in this repo (tester lives in the Sentinel codebase).
+
+**Files Modified:**
+- `integration.md` (document Career OS integration)
+
+**Acceptance Criteria:**
+- Sentinel indexes Career OS commands (install/test/startup) from `backend/pyproject.toml`
+- Default smoke runs the pytest suite, launches uvicorn, waits, crash-scans cleanly
+- Tester asserts `GET /` returns `{"status": "ok"}` and `GET /health` returns `{"status": "healthy"}`
+- Each major API group (knowledge-items, evidence, import, build, search, export, validate) has at least one live assertion
+- Targeted Sentinel tests green; screenshots non-blank
+
+**Definition of Done:** Sentinel discovers, launches, and asserts Career OS end-to-end without manual steps.
+
+**Dependencies:** All previous sprints.
+
+---
+
 ## Sprint Summary Table
 
 | Sprint | Phase | Objective | Est. Time |
@@ -1772,7 +1806,8 @@ Create all tables from the schema in Implementation Guide Section 1:
 | 30 | LLM | Local LLM integration | 120 min |
 | 31 | Integration | E2E tests | 120 min |
 | 32 | Release | MVP packaging | 150 min |
-| | | **Total: 32 sprints** | **~56 hours** |
+| 33 | Integration | Sentinel integration testers | 90 min |
+| | | **Total: 33 sprints** | **~58 hours** |
 
 ---
 
