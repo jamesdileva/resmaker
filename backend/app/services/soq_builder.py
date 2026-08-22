@@ -157,7 +157,7 @@ class SOQBuilderService:
                 lines=[item.content for item in included],
             ),
         ]
-        return BuiltDocument(
+        document = BuiltDocument(
             document_id=self._new_document_id(),
             template_name="soq_standard",
             sections=sections,
@@ -165,6 +165,10 @@ class SOQBuilderService:
             warnings=warnings,
             metadata={"category": self.analyzer.classify_question(question)},
         )
+        from app.services.export_service import registry
+
+        registry.register(document)
+        return document
 
     @staticmethod
     def _new_document_id() -> str:

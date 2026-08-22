@@ -13,6 +13,7 @@ from app.api.v1 import (
     applications_router,
     build_router,
     evidence_router,
+    export_router,
     import_router,
     knowledge_router,
     match_router,
@@ -78,6 +79,7 @@ app.include_router(import_router, prefix="/api/v1")
 app.include_router(build_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
 app.include_router(match_router, prefix="/api/v1")
+app.include_router(export_router, prefix="/api/v1")
 
 
 @app.exception_handler(AppError)

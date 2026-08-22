@@ -137,13 +137,17 @@ class DutyStatementBuilderService:
         else:
             sections = []
 
-        return BuiltDocument(
+        document = BuiltDocument(
             document_id=str(uuid.uuid4()),
             template_name="duty_standard",
             sections=sections,
             traceability=traceability,
             warnings=warnings,
         )
+        from app.services.export_service import registry
+
+        registry.register(document)
+        return document
 
     def _fetch_items(self, item_ids: list[str]) -> list[KnowledgeItem]:
         items: list[KnowledgeItem] = []

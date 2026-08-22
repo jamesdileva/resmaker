@@ -48,13 +48,17 @@ class ResumeBuilderService:
             user_profile or {},
             item_links=item_links,
         )
-        return BuiltDocument(
+        document = BuiltDocument(
             document_id=str(uuid.uuid4()),
             template_name=template_model.name,
             sections=rendered.sections,
             traceability=rendered.traceability,
             warnings=rendered.warnings,
         )
+        from app.services.export_service import registry
+
+        registry.register(document)
+        return document
 
     def suggest_items(
         self,
