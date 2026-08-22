@@ -20,6 +20,9 @@ export function Layout() {
             <li>
               <NavLink to="/import">Import</NavLink>
             </li>
+            <li>
+              <NavLink to="/resume">Resume Builder</NavLink>
+            </li>
           </ul>
         </nav>
       </aside>
