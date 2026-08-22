@@ -1,0 +1,34 @@
+{
+  "name": "standard",
+  "version": 1,
+  "sections": [
+    {
+      "title": "Summary",
+      "type": "profile",
+      "source": "user_profile"
+    },
+    {
+      "title": "Experience",
+      "type": "experience",
+      "item_types": ["resume_bullet"],
+      "group_by": "evidence_id",
+      "show_dates": true
+    },
+    {
+      "title": "Skills",
+      "type": "skills",
+      "item_types": ["skill"]
+    },
+    {
+      "title": "Projects",
+      "type": "projects",
+      "item_types": ["project"]
+    }
+  ],
+  "formatting": {
+    "font": "Calibri",
+    "font_size": 11,
+    "line_spacing": 1.15,
+    "margin_inches": 0.75
+  }
+}
