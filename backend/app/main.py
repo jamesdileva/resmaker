@@ -1,14 +1,28 @@
 """FastAPI application entry point for Career OS."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.db.connection import get_engine, init_db
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Initialize the knowledge base schema on startup."""
+    init_db(get_engine())
+    yield
+
+
 app = FastAPI(
     title="Career OS API",
     version="0.1.0",
     description="Deterministic career knowledge platform backend",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
