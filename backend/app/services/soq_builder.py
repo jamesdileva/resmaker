@@ -10,6 +10,7 @@ from app.core.exceptions import ValidationAppError
 from app.db.models import KnowledgeItem, KnowledgeItemEvidenceLink
 from app.models.build import BuiltDocument, Suggestion
 from app.models.resume import RenderedSection
+from app.services.soq_analyzer import SOQAnalyzer, load_soq_categories
 
 
 def count_words(text: str) -> int:
@@ -20,8 +21,52 @@ def count_words(text: str) -> int:
 class SOQBuilderService:
     """Answers SOQ questions using evidence from the knowledge base."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, analyzer: Optional[SOQAnalyzer] = None) -> None:
         self.session = session
+        self.analyzer = analyzer or SOQAnalyzer()
+
+    def suggest_items(
+        self,
+        question: str,
+        item_types: Optional[list[str]] = None,
+        min_score: float = 0.3,
+        top_k: int = 10,
+    ) -> list[Suggestion]:
+        """Find the most relevant evidence for an SOQ question.
+
+        Short questions are broadened with unmatched category keywords
+        from the analyzer to improve recall. Uses OR-semantics FTS5
+        ranking until the TF-IDF engine lands (Sprint 25).
+        """
+        expanded = self._expand_query(question)
+        # Delegating keeps suggestion behavior consistent across builders.
+        from app.services.resume_builder import ResumeBuilderService
+
+        return ResumeBuilderService(self.session).suggest_items(
+            expanded,
+            item_types=item_types,
+            min_score=min_score,
+            top_k=top_k,
+        )
+
+    def _expand_query(self, question: str) -> str:
+        """Broaden a question with its category's keyword patterns.
+
+        Adds up to three patterns from the detected category that do not
+        already appear in the question, improving OR-mode recall.
+        """
+        category = self.analyzer.classify_question(question)
+        if category == self.analyzer.DEFAULT_CATEGORY:
+            return question
+        lowered = question.lower()
+        additions = [
+            pattern
+            for pattern in load_soq_categories().get(category, [])
+            if pattern.lower() not in lowered
+        ][:3]
+        if not additions:
+            return question
+        return f"{question} {' '.join(additions)}"
 
     def suggest_items(
         self,
@@ -118,6 +163,7 @@ class SOQBuilderService:
             sections=sections,
             traceability=traceability,
             warnings=warnings,
+            metadata={"category": self.analyzer.classify_question(question)},
         )
 
     @staticmethod

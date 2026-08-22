@@ -24,6 +24,7 @@ class BuiltDocument(BaseModel):
     sections: list[RenderedSection]
     traceability: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class BuildResumeRequest(BaseModel):
