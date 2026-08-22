@@ -4,20 +4,29 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ExportToolbar } from './ExportToolbar';
 import { ExportDialog } from './ExportDialog';
 import { UIContextProvider } from '../contexts/UIContext';
+import type { ValidationResult } from '../api/build';
 
 const exportFileMock = vi.fn();
+let lastValidation: ValidationResult | null = null;
 
 vi.mock('../hooks/useExport', () => ({
   useExport: () => ({
     exportFile: (...args: unknown[]) => exportFileMock(...args),
     isExporting: false,
     error: null,
+    lastValidation,
   }),
 }));
 
 function UIWrap({ children }: { children: ReactNode }) {
   return <UIContextProvider>{children}</UIContextProvider>;
 }
+
+beforeEach(() => {
+  exportFileMock.mockReset();
+  lastValidation = null;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
 
 describe('ExportDialog', () => {
   it('renders nothing when closed', () => {
@@ -52,11 +61,6 @@ describe('ExportDialog', () => {
 });
 
 describe('ExportToolbar', () => {
-  beforeEach(() => {
-    exportFileMock.mockReset();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
   it('disables export when no document has been built', () => {
     render(
       <UIWrap>
@@ -69,9 +73,15 @@ describe('ExportToolbar', () => {
 
   it('opens dialog and exports with the chosen options', async () => {
     exportFileMock.mockResolvedValue('career-os-export.docx');
+    lastValidation = {
+      valid: true,
+      errors: [],
+      warnings: [],
+      score: 1,
+    };
     render(
       <UIWrap>
-        <ExportToolbar documentId="doc-1" />
+        <ExportToolbar documentId="doc-1" docType="resume" />
       </UIWrap>,
     );
 
@@ -81,14 +91,63 @@ describe('ExportToolbar', () => {
     await waitFor(() => {
       expect(exportFileMock).toHaveBeenCalledWith(
         'doc-1',
-        expect.objectContaining({ format: 'docx', includeTraceability: true }),
+        expect.objectContaining({
+          format: 'docx',
+          includeTraceability: true,
+          docType: 'resume',
+        }),
       );
     });
   });
 
-  it('reports failed exports as errors', async () => {
-    // The hook contract: failures resolve to null (never reject).
+  it('blocks export and lists validation errors', async () => {
     exportFileMock.mockResolvedValue(null);
+    lastValidation = {
+      valid: false,
+      errors: [
+        {
+          rule: 'completeness',
+          severity: 'error',
+          message: 'Resume is missing contact information',
+          field: 'profile',
+        },
+      ],
+      warnings: [],
+      score: 0.75,
+    };
+    render(
+      <UIWrap>
+        <ExportToolbar documentId="doc-1" docType="resume" />
+      </UIWrap>,
+    );
+
+    fireEvent.click(screen.getByTestId('open-export'));
+    fireEvent.click(screen.getByTestId('confirm-export'));
+
+    await waitFor(() => {
+      expect(exportFileMock).toHaveBeenCalled();
+    });
+    expect(screen.getByTestId('validation-errors')).toHaveTextContent(
+      /missing contact information/i,
+    );
+    expect(await screen.findByText(/blocked by validation errors/i)).toBeInTheDocument();
+  });
+
+  it('shows warning toasts after successful exports', async () => {
+    exportFileMock.mockResolvedValue('career-os-export.docx');
+    lastValidation = {
+      valid: true,
+      errors: [],
+      warnings: [
+        {
+          rule: 'keyword_coverage',
+          severity: 'warning',
+          message: 'Keyword coverage 50% — missing: excel',
+          field: null,
+        },
+      ],
+      score: 0.95,
+    };
     render(
       <UIWrap>
         <ExportToolbar documentId="doc-1" />
@@ -97,6 +156,9 @@ describe('ExportToolbar', () => {
 
     fireEvent.click(screen.getByTestId('open-export'));
     fireEvent.click(screen.getByTestId('confirm-export'));
-    expect(await screen.findByText('Export failed')).toBeInTheDocument();
+
+    expect(
+      await screen.findByText(/Exported with 1 warning\(s\)/i),
+    ).toBeInTheDocument();
   });
 });

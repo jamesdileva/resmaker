@@ -31,6 +31,38 @@ export interface ExportOptions {
   includeTraceability?: boolean;
 }
 
+export interface ValidationIssue {
+  rule: string;
+  severity: 'error' | 'warning' | string;
+  message: string;
+  field?: string | null;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+  score: number;
+}
+
+export type DocType = 'resume' | 'soq' | 'duty';
+
+/**
+ * Runs the validation engine over a built document.
+ */
+export async function validateDocument(
+  documentId: string,
+  docType: DocType,
+  keywords: string[] = [],
+): Promise<ValidationResult> {
+  const response = await apiClient.post<ValidationResult>('/validate/', {
+    document_id: documentId,
+    doc_type: docType,
+    keywords,
+  });
+  return response.data;
+}
+
 /**
  * Exports a built document and returns the file as a Blob ready for
  * download (the backend streams bytes via /export/download).

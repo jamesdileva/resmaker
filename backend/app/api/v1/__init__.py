@@ -8,6 +8,7 @@ from app.api.v1.import_ import router as import_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.match import router as match_router
 from app.api.v1.search import router as search_router
+from app.api.v1.validate import router as validate_router
 
 __all__ = [
     "applications_router",
@@ -18,4 +19,5 @@ __all__ = [
     "knowledge_router",
     "match_router",
     "search_router",
+    "validate_router",
 ]

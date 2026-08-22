@@ -119,7 +119,7 @@ export function DutyStatementBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Response'}
             </button>
-            <ExportToolbar documentId={document?.document_id ?? null} />
+            <ExportToolbar documentId={document?.document_id ?? null} docType="duty" />
           </div>
           {document && (
             <div style={{ marginTop: 16 }}>

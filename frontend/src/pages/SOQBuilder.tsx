@@ -104,7 +104,7 @@ export function SOQBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Response'}
             </button>
-            <ExportToolbar documentId={document?.document_id ?? null} />
+            <ExportToolbar documentId={document?.document_id ?? null} docType="soq" />
           </div>
         </div>
         <div style={{ width: 360 }}>

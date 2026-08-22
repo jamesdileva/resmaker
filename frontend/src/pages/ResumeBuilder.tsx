@@ -89,7 +89,7 @@ export function ResumeBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Resume'}
             </button>
-            <ExportToolbar documentId={document?.document_id ?? null} />
+            <ExportToolbar documentId={document?.document_id ?? null} docType="resume" />
           </div>
           {document && (
             <div style={{ marginTop: 16 }}>
