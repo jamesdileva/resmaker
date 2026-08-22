@@ -8,6 +8,25 @@ from app.services.extraction_service import ExtractionService
 NUMBERED_PREFIX_RE = re.compile(r"^\s*(\d{1,2})\s*[.)]\s+")
 BULLET_PREFIX_RE = re.compile(r"^\s*[\u2022\u25cf\u25aa\u25e6\u2023\u00b7\-\*]\s+")
 
+# Boilerplate found in real state postings (form instructions,
+# signatures, page-header artifacts).
+_NOISE_START_RE = re.compile(
+    r"^(note\b|example\b|enter the|enter a|classification:|working title:"
+    r"|position number:|division/unit:|assigned headquarters:|schedule:"
+    r"|scope and impact|consequence of error|administrative responsibility"
+    r"|supervision exercised|personal contacts:|internal personal contacts"
+    r"|working conditions|job description summary|job applicants)"
+    r"|^i (have|am|understand)\b"
+    r"|\d{4}\)",
+    re.IGNORECASE,
+)
+
+
+def _is_noise(sentence: str) -> bool:
+    if "______" in sentence:
+        return True
+    return bool(_NOISE_START_RE.match(sentence.strip()))
+
 
 class DutyStatementParser:
     """Parses a job posting's duty statement into individual requirements."""
@@ -28,6 +47,8 @@ class DutyStatementParser:
         requirements = self._parse_structured_lines(lines)
         if not requirements:
             requirements = self._parse_prose(" ".join(lines))
+
+        requirements = [r for r in requirements if not _is_noise(r.text)]
 
         for index, requirement in enumerate(requirements):
             requirement.order_index = index

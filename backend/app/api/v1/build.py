@@ -6,12 +6,14 @@ from sqlmodel import Session
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.db.connection import get_session
 from app.models.build import (
+    BuildDutyRequest,
     BuildResumeRequest,
     BuiltDocument,
     SuggestRequest,
     Suggestion,
 )
 from app.models.soq import BuildSoqRequest
+from app.services.duty_statement_builder import DutyStatementBuilderService
 from app.services.resume_builder import ResumeBuilderService
 from app.services.soq_builder import SOQBuilderService
 
@@ -70,6 +72,18 @@ def build_soq(
         payload.question,
         payload.selected_item_ids,
         max_words=payload.max_words,
+    )
+
+
+@router.post("/duty-statement", response_model=BuiltDocument)
+def build_duty_statement(
+    payload: BuildDutyRequest, session: Session = Depends(get_session)
+) -> BuiltDocument:
+    """Generate an evidence-backed response for each duty in a posting."""
+    service = DutyStatementBuilderService(session)
+    return service.generate_response(
+        payload.job_posting_id,
+        payload.selected_item_ids,
     )
 
 

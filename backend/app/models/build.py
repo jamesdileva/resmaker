@@ -42,3 +42,10 @@ class SuggestRequest(BaseModel):
     item_types: list[str] = []
     min_score: float = Field(default=0.3, ge=0.0, le=1.0)
     top_k: int = Field(default=10, ge=1, le=100)
+
+
+class BuildDutyRequest(BaseModel):
+    """Payload for generating a duty statement response."""
+
+    job_posting_id: str
+    selected_item_ids: list[str] = []
