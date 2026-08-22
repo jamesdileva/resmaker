@@ -25,3 +25,34 @@ export async function buildResume(
   });
   return response.data;
 }
+
+export interface ExportOptions {
+  format: 'docx' | 'txt';
+  includeTraceability?: boolean;
+}
+
+/**
+ * Exports a built document and returns the file as a Blob ready for
+ * download (the backend streams bytes via /export/download).
+ */
+export async function exportDocument(
+  documentId: string,
+  options: ExportOptions,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.post(
+    '/export/download',
+    {
+      document_id: documentId,
+      format: options.format,
+      include_traceability: options.includeTraceability ?? true,
+      download: true,
+    },
+    { responseType: 'blob' },
+  );
+
+  const disposition: string = response.headers['content-disposition'] ?? '';
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  const filename =
+    match?.[1] ?? `career-os-export.${options.format}`;
+  return { blob: response.data as Blob, filename };
+}

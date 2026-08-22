@@ -122,8 +122,9 @@ describe('ResumeBuilder', () => {
     ).toBe(true);
   });
 
-  it('disables export until the export pipeline exists', () => {
+  it('enables export only after a document is built', () => {
     renderPage();
-    expect(screen.getByText('Export')).toBeDisabled();
+    // No document yet: the toolbar's Export button is disabled.
+    expect(screen.getByTestId('open-export')).toBeDisabled();
   });
 });

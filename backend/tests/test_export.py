@@ -154,6 +154,35 @@ def test_export_endpoint_unknown_document_404(client) -> None:
     assert response.status_code == 404
 
 
+def test_download_mode_streams_bytes(client) -> None:
+    """download=True streams the file with an attachment header."""
+    registry.register(_sample_document())
+
+    response = client.post(
+        "/api/v1/export/download",
+        json={"document_id": "doc-test-1", "format": "txt", "download": True},
+    )
+    assert response.status_code == 200
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.headers["content-type"].startswith("text/plain")
+    body = response.content.decode("utf-8")
+    assert "SUMMARY" in body
+
+    docx_response = client.post(
+        "/api/v1/export/download",
+        json={"document_id": "doc-test-1", "format": "docx"},
+    )
+    assert (
+        docx_response.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    # Valid DOCX bytes parse cleanly.
+    import io
+
+    parsed = DocxDocument(io.BytesIO(docx_response.content))
+    assert parsed.paragraphs
+
+
 def test_export_endpoint_rejects_pdf_for_now(client) -> None:
     response = client.post(
         "/api/v1/export/", json={"document_id": "whatever", "format": "pdf"}

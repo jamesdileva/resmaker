@@ -3,6 +3,7 @@ import { SOQQuestionInput } from '../components/SOQQuestionInput';
 import { SOQEditor } from '../components/SOQEditor';
 import { SuggestionPanel } from '../components/SuggestionPanel';
 import { DocumentPreview } from '../components/DocumentPreview';
+import { ExportToolbar } from '../components/ExportToolbar';
 import { answerSoq } from '../api/soq';
 import { useBuilder } from '../contexts/BuilderContext';
 import { useUI } from '../contexts/UIContext';
@@ -103,12 +104,7 @@ export function SOQBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Response'}
             </button>
-            <button
-              disabled
-              title="Export arrives with the export pipeline"
-            >
-              Export
-            </button>
+            <ExportToolbar documentId={document?.document_id ?? null} />
           </div>
         </div>
         <div style={{ width: 360 }}>

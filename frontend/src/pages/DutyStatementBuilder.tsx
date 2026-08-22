@@ -3,6 +3,7 @@ import { DutyStatementInput } from '../components/DutyStatementInput';
 import { DutyStatementResponse } from '../components/DutyStatementResponse';
 import { SuggestionPanel } from '../components/SuggestionPanel';
 import { DocumentPreview } from '../components/DocumentPreview';
+import { ExportToolbar } from '../components/ExportToolbar';
 import { previewDuties } from '../api/duty';
 import type { DutyRequirement } from '../api/duty';
 import { buildDutyResponse } from '../api/duty';
@@ -118,12 +119,7 @@ export function DutyStatementBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Response'}
             </button>
-            <button
-              disabled
-              title="Export arrives with the export pipeline"
-            >
-              Export
-            </button>
+            <ExportToolbar documentId={document?.document_id ?? null} />
           </div>
           {document && (
             <div style={{ marginTop: 16 }}>

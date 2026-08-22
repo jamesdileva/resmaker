@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { SuggestionPanel } from '../components/SuggestionPanel';
 import { ContentEditor } from '../components/ContentEditor';
 import { DocumentPreview } from '../components/DocumentPreview';
+import { ExportToolbar } from '../components/ExportToolbar';
 import { SectionOrganizer } from '../components/SectionOrganizer';
 import { buildResume } from '../api/build';
 import { useBuilder } from '../contexts/BuilderContext';
@@ -88,12 +89,7 @@ export function ResumeBuilder() {
             <button onClick={() => void handleBuild()} disabled={isBuilding}>
               {isBuilding ? 'Building…' : 'Build Resume'}
             </button>
-            <button
-              disabled
-              title="Export arrives with the export pipeline (Sprint 28)"
-            >
-              Export
-            </button>
+            <ExportToolbar documentId={document?.document_id ?? null} />
           </div>
           {document && (
             <div style={{ marginTop: 16 }}>
