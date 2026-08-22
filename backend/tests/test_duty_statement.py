@@ -193,3 +193,68 @@ def test_duty_endpoint_validation_error(client, api_session: Session) -> None:
         json={"job_posting_id": posting.id, "selected_item_ids": []},
     )
     assert response.status_code == 400
+
+
+# --- Sprint 21 additions: raw_text path + duty preview ---
+
+
+def test_generate_response_from_raw_text(session: Session, seeded) -> None:
+    """Pasted posting text works without a pre-created JobPosting."""
+    from sqlmodel import select
+
+    items = seeded
+    document = DutyStatementBuilderService(session).generate_response(
+        raw_text=NUMBERED_DUTIES,
+        selected_item_ids=[item.id for item in items],
+    )
+    assert len(document.sections[0].groups) == 2
+
+    # The pasted text is persisted for provenance.
+    postings = list(session.exec(select(JobPosting)).all())
+    assert any(p.raw_text == NUMBERED_DUTIES for p in postings)
+
+
+def test_generate_response_requires_source(session: Session, seeded) -> None:
+    with pytest.raises(ValidationAppError):
+        DutyStatementBuilderService(session).generate_response(
+            selected_item_ids=[seeded[0].id]
+        )
+
+
+def test_duty_preview_endpoint(client) -> None:
+    response = client.post(
+        "/api/v1/build/duty-preview",
+        json={"raw_text": NUMBERED_DUTIES},
+    )
+    assert response.status_code == 200
+    requirements = response.json()["requirements"]
+    assert len(requirements) == 2
+    assert requirements[0]["category"]
+    assert requirements[0]["keywords"]
+
+
+def test_duty_preview_empty_text(client) -> None:
+    response = client.post("/api/v1/build/duty-preview", json={"raw_text": ""})
+    assert response.status_code == 200
+    assert response.json()["requirements"] == []
+
+
+def test_duty_endpoint_raw_text_happy_path(client, api_session: Session) -> None:
+    items = _seed(api_session)
+    response = client.post(
+        "/api/v1/build/duty-statement",
+        json={
+            "raw_text": NUMBERED_DUTIES,
+            "selected_item_ids": [i.id for i in items],
+        },
+    )
+    assert response.status_code == 200
+    assert len(response.json()["sections"][0]["groups"]) == 2
+
+
+def test_duty_endpoint_missing_source_400(client) -> None:
+    response = client.post(
+        "/api/v1/build/duty-statement",
+        json={"selected_item_ids": ["x"]},
+    )
+    assert response.status_code == 400

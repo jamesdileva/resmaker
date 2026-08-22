@@ -26,6 +26,9 @@ export function Layout() {
             <li>
               <NavLink to="/soq">SOQ Builder</NavLink>
             </li>
+            <li>
+              <NavLink to="/duty">Duty Statement</NavLink>
+            </li>
           </ul>
         </nav>
       </aside>

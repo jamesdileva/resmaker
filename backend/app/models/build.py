@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from app.db.models import KnowledgeItem
 from app.models.resume import RenderedSection
 
-
 class Suggestion(BaseModel):
     """A ranked evidence suggestion for a query."""
 
@@ -47,5 +46,12 @@ class SuggestRequest(BaseModel):
 class BuildDutyRequest(BaseModel):
     """Payload for generating a duty statement response."""
 
-    job_posting_id: str
+    job_posting_id: Optional[str] = None
+    raw_text: Optional[str] = None
     selected_item_ids: list[str] = []
+
+
+class DutyPreviewRequest(BaseModel):
+    """Payload for previewing parsed duties from posting text."""
+
+    raw_text: str

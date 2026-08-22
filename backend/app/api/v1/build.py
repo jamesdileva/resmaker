@@ -9,6 +9,7 @@ from app.models.build import (
     BuildDutyRequest,
     BuildResumeRequest,
     BuiltDocument,
+    DutyPreviewRequest,
     SuggestRequest,
     Suggestion,
 )
@@ -75,15 +76,30 @@ def build_soq(
     )
 
 
+@router.post("/duty-preview")
+def preview_duties(
+    payload: DutyPreviewRequest, session: Session = Depends(get_session)
+) -> dict:
+    """Parse posting text into duty requirements without building."""
+    from app.models.duty import DutyRequirement
+    from app.services.duty_statement_parser import DutyStatementParser
+
+    duties: list[DutyRequirement] = DutyStatementParser().parse(payload.raw_text)
+    return {"requirements": [d.model_dump() for d in duties]}
+
+
 @router.post("/duty-statement", response_model=BuiltDocument)
 def build_duty_statement(
     payload: BuildDutyRequest, session: Session = Depends(get_session)
 ) -> BuiltDocument:
     """Generate an evidence-backed response for each duty in a posting."""
+    if not payload.job_posting_id and not payload.raw_text:
+        raise ValidationAppError("Provide job_posting_id or raw_text")
     service = DutyStatementBuilderService(session)
     return service.generate_response(
-        payload.job_posting_id,
-        payload.selected_item_ids,
+        job_posting_id=payload.job_posting_id,
+        raw_text=payload.raw_text,
+        selected_item_ids=payload.selected_item_ids,
     )
 
 

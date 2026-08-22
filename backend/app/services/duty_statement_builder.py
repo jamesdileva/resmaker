@@ -43,19 +43,37 @@ class DutyStatementBuilderService:
 
     def generate_response(
         self,
-        job_posting_id: str,
-        selected_item_ids: list[str],
+        job_posting_id: Optional[str] = None,
+        selected_item_ids: Optional[list[str]] = None,
+        raw_text: Optional[str] = None,
     ) -> BuiltDocument:
         """Assemble one evidence-backed paragraph per parsed duty.
 
-        Each duty is matched against the selected knowledge items via
-        FTS5 ranking; the best match's existing content becomes the
-        response paragraph (the builder never writes new experience).
-        Duties prefer unused evidence so each draws on distinct support.
+        Accepts either a stored posting id or raw posting text (which is
+        persisted as a new JobPosting for provenance). Each duty is
+        matched against the selected knowledge items via FTS5 ranking;
+        the best match's existing content becomes the response paragraph
+        (the builder never writes new experience). Duties prefer unused
+        evidence so each draws on distinct support.
         """
-        posting = self.session.get(JobPosting, job_posting_id)
-        if posting is None:
-            raise NotFoundError(f"Job posting not found: {job_posting_id}")
+        if raw_text:
+            posting = JobPosting(
+                title="Pasted duty statement",
+                raw_text=raw_text,
+            )
+            self.session.add(posting)
+            self.session.commit()
+            self.session.refresh(posting)
+        elif job_posting_id:
+            posting = self.session.get(JobPosting, job_posting_id)
+            if posting is None:
+                raise NotFoundError(
+                    f"Job posting not found: {job_posting_id}"
+                )
+        else:
+            raise ValidationAppError(
+                "Provide job_posting_id or raw_text"
+            )
 
         duties = DutyStatementParser().parse(posting.raw_text)
         if not duties:
