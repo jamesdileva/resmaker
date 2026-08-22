@@ -1,35 +1,12 @@
 """Tests for the v1 API CRUD endpoints (Sprint 4)."""
 
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
 
 from app.db.models import JobPosting
 
 
-@pytest.fixture()
-def client(tmp_path: Path, monkeypatch):
-    """TestClient over an app bound to a fresh temp database."""
-    monkeypatch.setenv("CAREER_OS_DB_PATH", str(tmp_path / "api_test.db"))
-    from app.main import app
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-
-@pytest.fixture()
-def job_posting(client) -> JobPosting:
-    """Insert a job posting directly for application FK tests."""
-    from app.db.connection import get_engine
-    from sqlmodel import Session
-
-    posting = JobPosting(title="Analyst", raw_text="duties")
-    with Session(get_engine()) as session:
-        session.add(posting)
-        session.commit()
-        session.refresh(posting)
-    return posting
+# `client` and `job_posting` fixtures come from tests/conftest.py
 
 
 # --- Knowledge items ---
@@ -156,9 +133,7 @@ def test_evidence_crud_flow(client) -> None:
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
-    fetched = client.get(f"/evidence/{evidence['id']}")
-    if fetched.status_code == 404:
-        fetched = client.get(f"/api/v1/evidence/{evidence['id']}")
+    fetched = client.get(f"/api/v1/evidence/{evidence['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["items"] == []
     assert client.get("/api/v1/evidence/missing").status_code == 404

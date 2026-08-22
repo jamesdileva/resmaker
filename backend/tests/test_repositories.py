@@ -1,61 +1,18 @@
 """Tests for the core repository layer (Sprint 3)."""
 
-from pathlib import Path
-
 import pytest
 from sqlmodel import Session, select
 
-from app.db.connection import get_engine, init_db
 from app.db.models import (
     Application,
     ApplicationEvidenceLink,
     Evidence,
     JobPosting,
-    KnowledgeItem,
-    KnowledgeItemEvidenceLink,
 )
 from app.repositories.application import ApplicationRepository
 from app.repositories.evidence import EvidenceRepository
 from app.repositories.knowledge_item import KnowledgeItemRepository
-
-
-@pytest.fixture()
-def session(tmp_path: Path):
-    """Yield a session over a freshly initialized temp database."""
-    db_file = tmp_path / "repo_test.db"
-    engine = get_engine(str(db_file))
-    init_db(engine)
-    with Session(engine) as sess:
-        yield sess
-
-
-@pytest.fixture()
-def knowledge_items(session: Session) -> list[KnowledgeItem]:
-    items = [
-        KnowledgeItem(
-            type="resume_bullet",
-            title="Confidential records",
-            content="Handled confidential customer records daily",
-            category="Confidential Information",
-        ),
-        KnowledgeItem(
-            type="soq_paragraph",
-            title="Analysis work",
-            content="Performed data analysis and produced weekly reports",
-            category="Analysis",
-        ),
-        KnowledgeItem(
-            type="resume_bullet",
-            title="Customer service",
-            content="Resolved customer complaints with empathy",
-            category="Customer Service",
-        ),
-    ]
-    session.add_all(items)
-    session.commit()
-    for item in items:
-        session.refresh(item)
-    return items
+from tests.conftest import make_evidence, make_knowledge_item
 
 
 # --- KnowledgeItemRepository ---
@@ -63,9 +20,7 @@ def knowledge_items(session: Session) -> list[KnowledgeItem]:
 
 def test_knowledge_item_create_and_get(session: Session) -> None:
     repo = KnowledgeItemRepository(session)
-    created = repo.create(
-        KnowledgeItem(type="resume_bullet", content="Shipped a feature")
-    )
+    created = repo.create(make_knowledge_item(content="Shipped a feature"))
     assert created.id
     fetched = repo.get(created.id)
     assert fetched is not None
@@ -116,9 +71,7 @@ def test_knowledge_item_delete(session: Session, knowledge_items) -> None:
 
 def test_knowledge_item_bulk_create(session: Session) -> None:
     repo = KnowledgeItemRepository(session)
-    drafts = [
-        KnowledgeItem(type="skill", content=f"Skill {i}") for i in range(5)
-    ]
+    drafts = [make_knowledge_item(type="skill", content=f"Skill {i}") for i in range(5)]
     created = repo.bulk_create(drafts)
     assert len(created) == 5
     assert all(item.id for item in created)
@@ -151,9 +104,7 @@ def test_knowledge_item_search_min_score_filters(
 def test_get_with_evidence(session: Session, knowledge_items) -> None:
     evidence_repo = EvidenceRepository(session)
     item_repo = KnowledgeItemRepository(session)
-    ev = evidence_repo.create(
-        Evidence(type="experience", title="Boost Mobile", content="Retail role")
-    )
+    ev = evidence_repo.create(make_evidence(title="Boost Mobile", content="Retail role"))
     evidence_repo.link_to_item(ev.id, knowledge_items[0].id, strength=4)
 
     item, linked = item_repo.get_with_evidence(knowledge_items[0].id)
@@ -171,7 +122,7 @@ def test_get_with_evidence(session: Session, knowledge_items) -> None:
 def test_evidence_create_get_multi(session: Session) -> None:
     repo = EvidenceRepository(session)
     ev = repo.create(
-        Evidence(type="project", title="Side project", content="Built an app")
+        make_evidence(type="project", title="Side project", content="Built an app")
     )
     fetched = repo.get(ev.id)
     assert fetched is not None
@@ -182,7 +133,7 @@ def test_evidence_create_get_multi(session: Session) -> None:
 
 def test_evidence_link_to_item(session: Session, knowledge_items) -> None:
     repo = EvidenceRepository(session)
-    ev = repo.create(Evidence(type="experience", title="Job", content="Work"))
+    ev = repo.create(make_evidence(title="Job"))
     repo.link_to_item(ev.id, knowledge_items[1].id, strength=2)
     fetched = repo.get(ev.id)
     assert [i.id for i in fetched.items] == [knowledge_items[1].id]
@@ -198,7 +149,7 @@ def test_evidence_get_success_rate(session: Session, knowledge_items) -> None:
     session.commit()
 
     repo = EvidenceRepository(session)
-    ev = repo.create(Evidence(type="experience", title="Job", content="Work"))
+    ev = repo.create(make_evidence(title="Job"))
     repo.link_to_item(ev.id, knowledge_items[0].id)
 
     item_repo = KnowledgeItemRepository(session)
@@ -213,7 +164,7 @@ def test_evidence_get_success_rate(session: Session, knowledge_items) -> None:
 
 def test_evidence_get_success_rate_no_history(session: Session) -> None:
     repo = EvidenceRepository(session)
-    ev = repo.create(Evidence(type="education", title="Degree", content="BSc"))
+    ev = repo.create(make_evidence(type="education", title="Degree", content="BSc"))
     assert repo.get_success_rate(ev.id) == 0.0
 
 
@@ -297,3 +248,4 @@ def test_get_success_weight(session: Session, knowledge_items) -> None:
     assert weight == pytest.approx(expected)
     assert 0.0 <= weight <= 0.3
     assert repo.get_success_weight("unknown-item") == 0.0
+
