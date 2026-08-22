@@ -29,6 +29,9 @@ export function Layout() {
             <li>
               <NavLink to="/duty">Duty Statement</NavLink>
             </li>
+            <li>
+              <NavLink to="/explore">Explorer</NavLink>
+            </li>
           </ul>
         </nav>
       </aside>
