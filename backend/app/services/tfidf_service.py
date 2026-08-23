@@ -139,6 +139,24 @@ class TfidfService:
             query_vec, row.vector_json, norm_b=row.norm
         )
 
+    def item_vectors(self, item_ids: list[str]) -> dict[str, tuple[dict, float]]:
+        """Bulk-load (vector, norm) pairs for the given items."""
+        rows = self.session.exec(
+            select(TfidfVector).where(TfidfVector.key.in_(item_ids))  # type: ignore[attr-defined]
+        ).all()
+        return {
+            row.key: (row.vector_json or {}, row.norm) for row in rows
+        }
+
+    @staticmethod
+    def pairwise_similarity(
+        vec_a: tuple[dict, float], vec_b: tuple[dict, float]
+    ) -> float:
+        """Cosine between two bulk-loaded (vector, norm) pairs."""
+        return TfidfVectorizer.cosine_similarity(
+            vec_a[0], vec_b[0], norm_a=vec_a[1], norm_b=vec_b[1]
+        )
+
     def rebuild_if_needed(self) -> bool:
         """Rebuild the cached index when items changed. True if rebuilt."""
         from sqlalchemy import func

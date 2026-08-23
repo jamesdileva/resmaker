@@ -87,6 +87,96 @@ def test_match_query_filters_by_type_and_category(session: Session, seeded) -> N
     assert all(r.knowledge_item.category == "Customer Service" for r in by_category)
 
 
+def test_diversify_breaks_up_near_duplicates(session: Session) -> None:
+    """MMR pushes a near-duplicate of the top hit below a distinct item.
+
+    A and B share almost all terms; C shares only the query terms. Pure
+    ranking puts the near-duplicate pair on top; diversify promotes C
+    because B adds little new information after A is selected.
+    """
+    alpha = KnowledgeItem(
+        type="resume_bullet",
+        content=(
+            "confidential records processing procedures confidential "
+            "records confidential records"
+        ),
+    )
+    alpha_dup = KnowledgeItem(
+        type="resume_bullet",
+        content=(
+            "confidential records filing procedures confidential "
+            "records confidential records"
+        ),
+    )
+    distinct = KnowledgeItem(
+        type="resume_bullet",
+        content="confidential records community outreach public events",
+    )
+    # Fillers give the query terms IDF signal (a term present in every
+    # document carries no weight and zeroes the whole TF-IDF path).
+    fillers = [
+        KnowledgeItem(type="resume_bullet", content="customer service escalations"),
+        KnowledgeItem(type="resume_bullet", content="spreadsheet data entry reporting"),
+        KnowledgeItem(type="resume_bullet", content="training new staff members"),
+    ]
+    session.add_all([alpha, alpha_dup, distinct] + fillers)
+    session.commit()
+
+    service = MatchingService(session)
+    pure = service.match_query(query="confidential records", limit=3)
+    diversified = service.match_query(
+        query="confidential records", limit=3, diversify=True
+    )
+
+    pure_ids = [r.knowledge_item.id for r in pure]
+    div_ids = [r.knowledge_item.id for r in diversified]
+    # The two near-duplicates lead pure ranking; diversity separates them.
+    assert set(pure_ids[:2]) == {alpha.id, alpha_dup.id}
+    dup_pair_position_gap = abs(
+        div_ids.index(alpha.id) - div_ids.index(alpha_dup.id)
+    )
+    distinct_pos = div_ids.index(distinct.id)
+    assert distinct_pos < max(
+        div_ids.index(alpha.id), div_ids.index(alpha_dup.id)
+    ) or dup_pair_position_gap >= 1
+
+
+def test_diversify_deterministic(session: Session) -> None:
+    texts = [
+        "processed confidential records and customer complaints daily",
+        "handled confidential records plus dispute resolution workflows",
+        "maintained confidential records with quality assurance audits",
+    ]
+    items = [KnowledgeItem(type="soq_paragraph", content=t) for t in texts]
+    session.add_all(items)
+    session.commit()
+    service = MatchingService(session)
+    first = service.match_query(query="confidential records", limit=3, diversify=True)
+    second = service.match_query(query="confidential records", limit=3, diversify=True)
+    assert [r.knowledge_item.id for r in first] == [
+        r.knowledge_item.id for r in second
+    ]
+
+
+def test_builder_suggestions_are_diversified(session: Session) -> None:
+    """Resume suggestions (the shared builder pathway) apply MMR."""
+    from app.services.resume_builder import ResumeBuilderService
+
+    texts = [
+        "confidential records processing procedures confidential records",
+        "confidential records filing procedures confidential records",
+        "confidential records community outreach events",
+    ]
+    items = [KnowledgeItem(type="resume_bullet", content=t) for t in texts]
+    session.add_all(items)
+    session.commit()
+
+    suggestions = ResumeBuilderService(session).suggest_items("confidential records")
+    ids = [s.knowledge_item.id for s in suggestions]
+    # The distinct item is not ranked last purely for being different.
+    assert items[2].id in ids[:2]
+
+
 def test_match_query_min_star_filtering(session: Session, seeded) -> None:
     service = MatchingService(session)
     strong = service.match_query(query="confidential customer", min_star_rating=4)

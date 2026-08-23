@@ -20,8 +20,11 @@ export function DocumentPreview({ document, order }: DocumentPreviewProps) {
       <small style={{ color: 'var(--text-muted)' }}>
         {document.document_id.slice(0, 8)} · template: {document.template_name}
       </small>
-      {orderedSections(document, order).map((section) => (
-        <section key={section.section_type} style={{ marginTop: 16 }}>
+      {orderedSections(document, order).map((section, sectionIndex) => (
+        <section
+          key={`${section.section_type}-${sectionIndex}`}
+          style={{ marginTop: 16 }}
+        >
           <h3 style={{ margin: '0 0 6px', textTransform: 'uppercase' }}>
             {section.title}
           </h3>

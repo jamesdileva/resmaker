@@ -12,6 +12,13 @@ vi.mock('../api/soq', () => ({
   analyzeQuestion: (...args: unknown[]) => analyzeMock(...args),
   answerSoq: (...args: unknown[]) => answerMock(...args),
   countWords: (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0),
+  buildSoqBatch: vi.fn().mockResolvedValue({}),
+  getPastQuestions: vi.fn().mockResolvedValue([]),
+  parseSoqQuestions: (raw: string) =>
+    raw
+      .split(/\r?\n/)
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.endsWith('?')),
 }));
 
 vi.mock('../api/build', () => ({

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { SOQQuestionInput } from '../components/SOQQuestionInput';
 import { SOQEditor } from '../components/SOQEditor';
 import { PolishPanel } from '../components/PolishPanel';
+import { SOQBatchPanel } from '../components/SOQBatchPanel';
 import { SuggestionPanel } from '../components/SuggestionPanel';
 import { DocumentPreview } from '../components/DocumentPreview';
 import { ExportToolbar } from '../components/ExportToolbar';
@@ -113,6 +114,7 @@ export function SOQBuilder() {
             </button>
             <ExportToolbar documentId={document?.document_id ?? null} docType="soq" />
           </div>
+          <SOQBatchPanel onBuilt={setDocument} />
         </div>
         <div style={{ width: 360 }}>
           <h3>Preview</h3>

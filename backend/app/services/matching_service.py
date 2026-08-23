@@ -64,6 +64,8 @@ class MatchingService:
         sort_by: str = "relevance",
         limit: int = 50,
         match_all: bool = True,
+        diversify: bool = False,
+        diversity_lambda: float = 0.7,
     ) -> list[SearchResult]:
         """Full explorer search with filters, stars, and provenance.
 
@@ -72,6 +74,11 @@ class MatchingService:
         (final = cosine * (1 + weight)); falls back to FTS5 ranking when
         the corpus is too small for a meaningful IDF. An empty query
         returns recent items (browse mode).
+
+        ``diversify`` applies maximal-marginal-relevance re-ranking so the
+        returned set covers distinct experiences instead of several
+        near-duplicate tellings of the same story. Used by the builders'
+        suggestion path; the explorer keeps pure relevance order.
         """
         repo = KnowledgeItemRepository(self.session)
         candidates = self._base_candidates(query, repo, match_all, min_score)
@@ -105,7 +112,53 @@ class MatchingService:
         else:
             results.sort(key=lambda r: r.score, reverse=True)
 
+        if diversify:
+            return self._diversify(results, limit, diversity_lambda)
         return results[:limit]
+
+    def _diversify(
+        self,
+        results: list[SearchResult],
+        limit: int,
+        diversity_lambda: float,
+    ) -> list[SearchResult]:
+        """Maximal-marginal-relevance selection over ranked results.
+
+        Iteratively picks the candidate maximizing
+        ``lambda * relevance - (1 - lambda) * max_similarity_to_selected``
+        using cached TF-IDF item vectors. Deterministic; ties fall to the
+        earlier-ranked candidate.
+        """
+        tfidf = TfidfService(self.session)
+        tfidf.rebuild_if_needed()
+        vectors = tfidf.item_vectors([r.knowledge_item.id for r in results])
+
+        def sim(a: str, b: str) -> float:
+            va = vectors.get(a)
+            vb = vectors.get(b)
+            if not va or not vb:
+                return 0.0
+            return TfidfService.pairwise_similarity(va, vb)
+
+        selected: list[SearchResult] = []
+        remaining = list(results)
+        while remaining and len(selected) < limit:
+            best_index = 0
+            best_mmr = None
+            for index, candidate in enumerate(remaining):
+                max_sim = max(
+                    (
+                        sim(candidate.knowledge_item.id, chosen.knowledge_item.id)
+                        for chosen in selected
+                    ),
+                    default=0.0,
+                )
+                mmr = diversity_lambda * candidate.score - (1 - diversity_lambda) * max_sim
+                if best_mmr is None or mmr > best_mmr:
+                    best_mmr = mmr
+                    best_index = index
+            selected.append(remaining.pop(best_index))
+        return selected
 
     def _base_candidates(
         self,

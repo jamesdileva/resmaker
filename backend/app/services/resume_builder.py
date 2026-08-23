@@ -66,11 +66,15 @@ class ResumeBuilderService:
         item_types: Optional[list[str]] = None,
         min_score: float = 0.3,
         top_k: int = 10,
+        diversify: bool = True,
     ) -> list[Suggestion]:
         """Rank knowledge items against a query.
 
         Routes through MatchingService so builders inherit TF-IDF
         scoring and historical success weighting (Sprint 26).
+        ``diversify`` (default on) applies MMR so suggestions cover
+        distinct experiences instead of near-duplicate tellings of the
+        same story — builders pick a *set*, not a ranked list.
         """
         from app.services.matching_service import MatchingService
 
@@ -81,6 +85,7 @@ class ResumeBuilderService:
             min_score=min_score,
             limit=top_k,
             match_all=False,
+            diversify=diversify,
         )
         return [
             Suggestion(

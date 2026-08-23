@@ -119,6 +119,58 @@ def test_suggest_expands_query_with_category_patterns(
     assert "multitasking" in captured["query"].lower()
 
 
+def test_question_similarity_boosts_matching_history(session: Session) -> None:
+    """A stored paragraph whose original question resembles the current
+    one outranks an equally-scored candidate with unrelated history."""
+    from app.models.build import Suggestion
+
+    matching_history = KnowledgeItem(
+        type="soq_paragraph",
+        content="I prioritized conflicting deadlines using triage lists.",
+        metadata_json={
+            "question": (
+                "Describe your experience prioritizing multiple "
+                "high-level assignments with conflicting deadlines."
+            )
+        },
+    )
+    other_history = KnowledgeItem(
+        type="soq_paragraph",
+        content="I maintained confidential records and filing systems.",
+        metadata_json={"question": "Describe your records management experience."},
+    )
+    session.add_all([matching_history, other_history])
+    session.commit()
+
+    # Identical answer scores: only question similarity can separate them.
+    suggestions = [
+        Suggestion(knowledge_item=other_history, score=0.5),
+        Suggestion(knowledge_item=matching_history, score=0.5),
+    ]
+    blended = SOQBuilderService(session)._blend_question_similarity(
+        "Describe your experience prioritizing multiple high-level "
+        "assignments and conflicting deadlines.",
+        suggestions,
+    )
+    assert blended[0].knowledge_item.id == matching_history.id
+    assert blended[0].score > blended[-1].score
+
+
+def test_blend_tolerates_missing_question_metadata(session: Session) -> None:
+    """Candidates without stored questions keep their score untouched."""
+    from app.models.build import Suggestion
+
+    bare = KnowledgeItem(type="resume_bullet", content="Did things well.")
+    session.add(bare)
+    session.commit()
+    suggestions = [Suggestion(knowledge_item=bare, score=0.42)]
+    blended = SOQBuilderService(session)._blend_question_similarity(
+        "Any question?", suggestions
+    )
+    assert len(blended) == 1
+    assert abs(blended[0].score - 0.42 * (1 - 0.35)) < 1e-4
+
+
 # --- answer_question ---
 
 
@@ -320,3 +372,96 @@ def test_build_soq_endpoint_validation(client, api_session: Session) -> None:
 def test_build_soq_endpoint_request_validation(client) -> None:
     response = client.post("/api/v1/build/soq", json={"question": ""})
     assert response.status_code == 400
+
+
+# --- batch build (CalCareers format) + past questions ---
+
+
+def _seed_answered(session: Session, question: str, n: int = 2) -> list[KnowledgeItem]:
+    items = [
+        KnowledgeItem(
+            type="soq_paragraph",
+            content=f"Answer {i}: I handled the duties described thoroughly.",
+            metadata_json={"question": question},
+        )
+        for i in range(n)
+    ]
+    session.add_all(items)
+    session.commit()
+    return items
+
+
+def test_batch_build_produces_header_and_numbered_pairs(session: Session) -> None:
+    q1 = "Describe your experience prioritizing assignments?"
+    q2 = "Describe your experience with confidential records?"
+    _seed_answered(session, q1)
+    _seed_answered(session, q2)
+
+    document = SOQBuilderService(session).answer_questions_batch(
+        [q1, q2],
+        first_name="James",
+        last_name="Dileva",
+        position_title="Claims Analyst",
+        max_words=100,
+    )
+    types = [s.section_type for s in document.sections]
+    assert types == ["soq_header", "soq_question", "soq_response"] * 2 or types == [
+        "soq_header",
+        "soq_question",
+        "soq_response",
+        "soq_question",
+        "soq_response",
+    ]
+    header = document.sections[0]
+    assert header.profile_lines[0] == "James Dileva"
+    assert header.profile_lines[2] == "Statement of Qualifications"
+    assert document.sections[1].profile_lines[0] == f"1. {q1}"
+    assert document.sections[3].profile_lines[0] == f"2. {q2}"
+    # per-question categories recorded in metadata
+    assert set(document.metadata.keys()) >= {"category_q1", "category_q2"}
+
+
+def test_batch_build_requires_questions(session: Session) -> None:
+    with pytest.raises(ValidationAppError):
+        SOQBuilderService(session).answer_questions_batch(
+            ["   "], first_name="A", last_name="B", position_title="C"
+        )
+
+
+def test_batch_endpoint_uses_suggestions_when_no_selections(
+    client, api_session: Session
+) -> None:
+    q = "Describe your experience handling confidential information"
+    _seed_soq_items(api_session)
+
+    response = client.post(
+        "/api/v1/build/soq-batch",
+        json={
+            "questions": [q],
+            "first_name": "James",
+            "last_name": "Dileva",
+            "position_title": "Claims Analyst",
+            "max_words": 250,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    response_sections = [s for s in body["sections"] if s["section_type"] == "soq_response"]
+    assert len(response_sections) == 1
+    assert len(response_sections[0]["lines"]) >= 1
+    assert any(s["section_type"] == "soq_header" for s in body["sections"])
+
+
+def test_past_questions_endpoint(client, api_session: Session) -> None:
+    q_common = "Describe your experience with deadlines?"
+    _seed_answered(api_session, q_common, n=2)
+    _seed_answered(api_session, "Describe teamwork?", n=1)
+
+    response = client.get("/api/v1/build/past-questions")
+    assert response.status_code == 200
+    entries = response.json()
+    by_text = {e["question"]: e["times_answered"] for e in entries}
+    assert by_text[q_common] == 2
+    assert by_text["Describe teamwork?"] == 1
+    # most-answered first
+    assert entries[0]["question"] == q_common

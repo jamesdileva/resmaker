@@ -13,12 +13,42 @@ from app.models.build import (
     SuggestRequest,
     Suggestion,
 )
-from app.models.soq import BuildSoqRequest
+from app.models.soq import BuildSoqBatchRequest, BuildSoqRequest
 from app.services.duty_statement_builder import DutyStatementBuilderService
 from app.services.resume_builder import ResumeBuilderService
 from app.services.soq_builder import SOQBuilderService
 
 router = APIRouter(prefix="/build", tags=["build"])
+
+
+@router.get("/past-questions")
+def past_questions(session: Session = Depends(get_session)) -> list[dict]:
+    """Distinct questions previously answered by imported SOQ paragraphs.
+
+    Sourced from soq_paragraph ``metadata.question``; sorted by how many
+    stored items answered each question, then alphabetically.
+    """
+    from sqlalchemy import select
+
+    from app.db.models import KnowledgeItem
+
+    counts: dict[str, int] = {}
+    rows = (
+        session.execute(
+            select(KnowledgeItem).where(KnowledgeItem.type == "soq_paragraph")  # type: ignore[attr-defined]
+        )
+        .scalars()
+        .all()
+    )
+    for item in rows:
+        question = str((item.metadata_json or {}).get("question") or "").strip()
+        if question:
+            counts[question] = counts.get(question, 0) + 1
+    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [
+        {"question": question, "times_answered": count}
+        for question, count in ordered
+    ]
 
 
 @router.post("/suggest", response_model=list[Suggestion])
@@ -73,6 +103,23 @@ def build_soq(
         payload.question,
         payload.selected_item_ids,
         max_words=payload.max_words,
+    )
+
+
+@router.post("/soq-batch", response_model=BuiltDocument)
+def build_soq_batch(
+    payload: BuildSoqBatchRequest, session: Session = Depends(get_session)
+) -> BuiltDocument:
+    """Assemble a full multi-question SOQ document with a CalCareers header."""
+    service = SOQBuilderService(session)
+    return service.answer_questions_batch(
+        payload.questions,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        position_title=payload.position_title,
+        max_words=payload.max_words,
+        items_per_question=payload.items_per_question,
+        selections=payload.selections,
     )
 
 

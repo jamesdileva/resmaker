@@ -23,6 +23,10 @@ def count_words(text: str) -> int:
 # contributions from being erased entirely when the budget is tight.
 MIN_SHARE_WORDS = 15
 
+# Weight of stored-question overlap in the blended suggestion score
+# (see SOQBuilderService._blend_question_similarity).
+QUESTION_BLEND_WEIGHT = 0.35
+
 _SENTENCE_END_RE = re.compile(r"[.!?][\"')\]]?\s")
 
 
@@ -111,7 +115,12 @@ class SOQBuilderService:
 
         Short questions are broadened with unmatched category keywords
         from the analyzer to improve recall. Ranking is delegated to the
-        resume builder so all builders share one pathway.
+        resume builder so all builders share one pathway (MMR-diversified
+        by default), then re-blended with question-to-question similarity:
+        imported SOQ paragraphs remember the question they originally
+        answered, and an item that already answered something very close
+        to the current question is stronger evidence than raw answer-text
+        similarity alone suggests.
 
         (Live-fix 2026-08-23: a duplicate later definition of this method
         silently shadowed it, so category expansion never ran.)
@@ -120,12 +129,51 @@ class SOQBuilderService:
         # Delegating keeps suggestion behavior consistent across builders.
         from app.services.resume_builder import ResumeBuilderService
 
-        return ResumeBuilderService(self.session).suggest_items(
+        suggestions = ResumeBuilderService(self.session).suggest_items(
             expanded,
             item_types=item_types,
             min_score=min_score,
             top_k=top_k,
         )
+        return self._blend_question_similarity(question, suggestions)
+
+    def _blend_question_similarity(
+        self, question: str, suggestions: list[Suggestion]
+    ) -> list[Suggestion]:
+        """Re-rank candidates blending answer score with question overlap.
+
+        Jaccard token overlap between the current question and each
+        candidate's stored ``metadata.question`` (0 when absent). Blended
+        score stays in [0, 1]; ties keep the incoming rank order.
+        """
+        from app.services.tfidf_service import tokenize
+
+        question_tokens = set(tokenize(question))
+        rescored: list[tuple[float, Suggestion]] = []
+        for suggestion in suggestions:
+            metadata = suggestion.knowledge_item.metadata_json or {}
+            stored_question = str(metadata.get("question") or "")
+            if stored_question:
+                stored_tokens = set(tokenize(stored_question))
+                union = len(question_tokens | stored_tokens)
+                overlap = len(question_tokens & stored_tokens) / max(union, 1)
+            else:
+                overlap = 0.0
+            blended = (
+                (1 - QUESTION_BLEND_WEIGHT) * suggestion.score
+                + QUESTION_BLEND_WEIGHT * overlap
+            )
+            rescored.append((blended, suggestion))
+
+        rescored.sort(key=lambda pair: -pair[0])
+        return [
+            Suggestion(
+                knowledge_item=suggestion.knowledge_item,
+                score=round(blended, 6),
+                evidence_id=suggestion.evidence_id,
+            )
+            for blended, suggestion in rescored
+        ]
 
     def _expand_query(self, question: str) -> str:
         """Broaden a question with its category's keyword patterns.
@@ -221,6 +269,120 @@ class SOQBuilderService:
             traceability=traceability,
             warnings=warnings,
             metadata={"category": self.analyzer.classify_question(question)},
+        )
+        from app.services.export_service import registry
+
+        registry.register(document)
+        return document
+
+    def answer_questions_batch(
+        self,
+        questions: list[str],
+        first_name: str,
+        last_name: str,
+        position_title: str,
+        max_words: int = 250,
+        items_per_question: int = 5,
+        selections: Optional[dict[str, list[str]]] = None,
+    ) -> BuiltDocument:
+        """Assemble a full multi-question SOQ document (CalCareers style).
+
+        One header section (name, position title, heading) followed by a
+        numbered restatement + response pair per question. Evidence comes
+        from explicit selections when provided, otherwise from the top
+        ``items_per_question`` suggestions for that question. Deterministic.
+        """
+        clean_questions = [q.strip() for q in questions if q and q.strip()]
+        if not clean_questions:
+            raise ValidationAppError("At least one question is required")
+
+        sections: list[RenderedSection] = [
+            RenderedSection(
+                title="Statement of Qualifications",
+                section_type="soq_header",
+                profile_lines=[
+                    f"{first_name.strip()} {last_name.strip()}",
+                    position_title.strip(),
+                    "Statement of Qualifications",
+                ],
+            )
+        ]
+        traceability: dict[str, str] = {}
+        warnings: list[str] = []
+        categories: dict[str, str] = {}
+
+        for index, question in enumerate(clean_questions, start=1):
+            selected_ids = list((selections or {}).get(question) or [])
+            suggestion_error = ""
+            if not selected_ids:
+                try:
+                    suggestions = self.suggest_items(
+                        question, top_k=items_per_question
+                    )
+                    selected_ids = [
+                        s.knowledge_item.id
+                        for s in suggestions[:items_per_question]
+                    ]
+                except ValidationAppError as exc:
+                    suggestion_error = str(exc)
+                    selected_ids = []
+            try:
+                answer = self.answer_question(
+                    question, selected_ids, max_words=max_words
+                )
+            except ValidationAppError as exc:
+                # No usable evidence for this question: mark the gap honestly
+                # instead of failing the whole document.
+                warnings.append(f"Q{index}: {suggestion_error or exc}")
+                sections.append(
+                    RenderedSection(
+                        title=f"Question {index}",
+                        section_type="soq_question",
+                        profile_lines=[f"{index}. {question}"],
+                    )
+                )
+                sections.append(
+                    RenderedSection(
+                        title=f"Response {index}",
+                        section_type="soq_response",
+                        lines=["[No matching knowledge base evidence was selected.]"],
+                    )
+                )
+                categories[f"category_q{index}"] = self.analyzer.classify_question(
+                    question
+                )
+                continue
+            response = next(
+                s
+                for s in answer.sections
+                if s.section_type == "soq_response"
+            )
+            numbered = f"{index}. {question}"
+            sections.append(
+                RenderedSection(
+                    title=f"Question {index}",
+                    section_type="soq_question",
+                    profile_lines=[numbered],
+                )
+            )
+            sections.append(
+                RenderedSection(
+                    title=f"Response {index}",
+                    section_type="soq_response",
+                    lines=response.lines,
+                )
+            )
+            traceability.update(answer.traceability)
+            categories[f"category_q{index}"] = answer.metadata.get("category", "")
+            warnings.extend(f"Q{index}: {w}" for w in answer.warnings)
+
+        document = BuiltDocument(
+            document_id=self._new_document_id(),
+            template_name="soq_standard_batch",
+            sections=sections,
+            traceability=traceability,
+            warnings=warnings,
+            metadata=categories,
         )
         from app.services.export_service import registry
 
