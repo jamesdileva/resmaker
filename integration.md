@@ -130,3 +130,35 @@ completion proof without any text read (Rule 3).
 5. Targeted tests green + lint (black/isort/flake8) + full gate.
 6. Restart server, live E2E, verify screenshots non-blank.
 7. Changelog row in docs/01/02/03 + this checklist if the pattern changed.
+
+## Career OS (ResMaker) — integration pattern (2026-08-22)
+
+First integration to need **both** a thin-client renderer and per-app
+sandbox artifacts; three patterns worth reusing:
+
+1. **Thin-client electron apps: the feature owns the backend.**
+   Career OS's renderer is a thin client over its FastAPI backend (base
+   URL baked at build time to `127.0.0.1:8000/api/v1`). The FeatureRunner
+   launches the exe; the *feature* spawns uvicorn from the project's own
+   venv (`backend/.venv/Scripts/python -m uvicorn app.main:app --port
+   8000`, cwd=backend), polls `/health` before touching the UI, reuses an
+   already-healthy :8000, and tears down ONLY the PID tree it spawned —
+   never `taskkill /IM <exe>` (the runner owns the app process).
+2. **Sandbox state artifact via userData boot marker.** The sandbox
+   verifier needs a per-app state artifact inside `--user-data-dir`.
+   Career OS writes `<userData>/career-os.log` from `electron/main.cjs`
+   on boot; the artifact name joined `_verify_sandbox`'s known-names list
+   (same pattern as `tv_scheduler.db`). Repackage after touching
+   main.cjs — dev-mode runs don't refresh win-unpacked.
+3. **npm-workspace packaging layout.** Workspace apps run electron-builder
+   inside `frontend/`, so the exe lands in
+   `frontend/dist_electron/win-unpacked/` (and older builds in
+   `frontend/dist/win-unpacked/`) — invisible to root-level probes.
+   `launcher_detect._LAYOUTS` now includes both.
+
+Tier 1 facts block (also in the tester docstring): launch
+`cd backend && .venv\Scripts\python -m uvicorn app.main:app --port 8000`,
+port 8000, no auth, GET / -> `{"status":"ok"}`, GET /health ->
+`{"status":"healthy"}`, fallback `scripts/dev.py --backend-only`. POST
+groups asserted create-then-delete with a unique token per run so the
+user's real corpus is never mutated.

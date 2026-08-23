@@ -1791,7 +1791,17 @@ Feature steps: taskkill by image name → launch packaged exe with `--remote-deb
 
 *Part D — wrap-up:* targeted tests green + lint + full Sentinel gate; restart server, live E2E, non-blank screenshots; changelog rows here + `integration.md`.
 
-**Open questions at planning time:** (1) whether the user's Sentinel instance already indexes this machine (Part A may be pre-done); (2) whether Part C ships in this sprint or follows once Tier 1 is stable.
+**Open questions at planning time (resolved 2026-08-22, execution):**
+(1) Sentinel already indexes ResMaker — Part A reduced to confirming extracted commands on the dashboard. (2) Decision: ship Tier 1 + Tier 2 together in this sprint.
+
+**Execution notes (2026-08-22):**
+- Tier 1 tester: `sentinel/backend/app/testers/career_os.py`, registered under slug `ResMaker` with `auto_launch=False` and `ports=(8000,)`. POST assertions create a uniquely-tokened knowledge item via the API, run `/search/`, `/build/suggest`, `/build/resume`, `/validate/` against it, then DELETE it and prove the 404 — the real corpus is untouched. Live-verified end-to-end against the real backend on a scratch port before handoff.
+- Tier 2 feature: `sentinel/backend/app/testers/features/career_os.py` (`electron=True`). The FeatureRunner launches the packaged exe itself; the feature owns the backend process — spawns uvicorn from `backend/.venv`, polls `/health` (renderer base URL baked to `127.0.0.1:8000/api/v1`), reuses an already-healthy :8000, drives dashboard → Explorer click-through, and tears down ONLY its own PID tree (never taskkill by image name).
+- **Three cross-repo additions the integration required** (deviations from "no files modified in this repo"):
+  1. `frontend/electron/main.cjs`: boot marker appended to `<userData>/career-os.log` — Sentinel's sandbox verifier (`feature_runner._verify_sandbox`) requires a per-app state artifact; `"career-os.log"` added to its known-names list (same per-app pattern as `tv_scheduler.db`).
+  2. Sentinel `launcher_detect.py`: two new layouts `frontend/dist_electron/win-unpacked` + `frontend/dist/win-unpacked` — Career OS's exe lives under `frontend/` (npm-workspace build), invisible to the root-level probes.
+  3. Repackaged `dist_electron/win-unpacked/Career OS.exe` so the shipped exe contains the boot marker; stale pre-marker `frontend/dist/win-unpacked` gone after rebuild cleanup.
+- Tests: Sentinel `tests/test_career_os.py` (13 tests) + registry/launcher updates; ResMaker suites untouched and green (pytest 247/247, vitest 95/95, tsc clean).
 
 **Dependencies:** All previous sprints.
 
