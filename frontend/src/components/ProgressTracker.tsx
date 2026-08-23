@@ -55,7 +55,7 @@ export function ProgressTracker({ phase, progress = 0 }: ProgressTrackerProps) {
         style={{
           height: 8,
           borderRadius: 4,
-          background: '#e5e7eb',
+          background: 'var(--chip)',
           overflow: 'hidden',
         }}
       >

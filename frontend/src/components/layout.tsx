@@ -7,7 +7,7 @@ export function Layout() {
         className="sidebar"
         style={{
           width: 200,
-          borderRight: '1px solid #e5e7eb',
+          borderRight: '1px solid var(--border)',
           padding: 16,
         }}
       >

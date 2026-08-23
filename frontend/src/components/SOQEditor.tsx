@@ -53,7 +53,7 @@ export function SOQEditor({
         style={{
           height: 6,
           borderRadius: 3,
-          background: '#e5e7eb',
+          background: 'var(--chip)',
           overflow: 'hidden',
         }}
       >
@@ -67,7 +67,7 @@ export function SOQEditor({
       </div>
 
       {items.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-faint)' }}>
           Add evidence suggestions to compose your response.
         </p>
       ) : (

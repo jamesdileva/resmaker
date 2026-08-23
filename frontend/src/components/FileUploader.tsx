@@ -64,19 +64,19 @@ export function FileUploader({ onFileAccepted, disabled }: FileUploaderProps) {
         onDragOver={handleDragOver}
         onDragLeave={() => setIsDragging(false)}
         style={{
-          border: `2px dashed ${isDragging ? '#2563eb' : '#9ca3af'}`,
+          border: `2px dashed ${isDragging ? '#2563eb' : 'var(--border)'}`,
           borderRadius: 8,
           padding: 32,
           textAlign: 'center',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          background: isDragging ? '#eff6ff' : 'transparent',
+          background: isDragging ? 'var(--info-bg)' : 'transparent',
           opacity: disabled ? 0.5 : 1,
         }}
       >
         <p style={{ margin: 0 }}>
           Drag & drop a resume or SOQ here, or click to browse
         </p>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280' }}>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-faint)' }}>
           Supported formats: {acceptAttribute}
         </p>
       </div>

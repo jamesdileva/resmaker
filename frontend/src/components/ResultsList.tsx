@@ -15,7 +15,7 @@ export function ResultsList({
 }: ResultsListProps) {
   if (isLoading) {
     return (
-      <p data-testid="results-loading" style={{ color: '#6b7280' }}>
+      <p data-testid="results-loading" style={{ color: 'var(--text-faint)' }}>
         Searching…
       </p>
     );
@@ -23,7 +23,7 @@ export function ResultsList({
 
   if (results.length === 0) {
     return (
-      <p data-testid="results-empty" style={{ color: '#6b7280' }}>
+      <p data-testid="results-empty" style={{ color: 'var(--text-faint)' }}>
         No matching knowledge items.
       </p>
     );
@@ -37,7 +37,7 @@ export function ResultsList({
           data-testid="result-item"
           onClick={() => onSelect?.(result.knowledge_item.id)}
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             padding: 10,
             marginBottom: 10,
@@ -62,8 +62,8 @@ export function ResultsList({
             {result.knowledge_item.category && (
               <span
                 style={{
-                  background: '#f3f4f6',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--chip)',
+                  border: '1px solid var(--border)',
                   borderRadius: 999,
                   padding: '1px 8px',
                   fontSize: 12,
@@ -78,7 +78,7 @@ export function ResultsList({
             {result.knowledge_item.content.length > 180 ? '…' : ''}
           </p>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <small style={{ color: '#9ca3af' }}>
+            <small style={{ color: 'var(--text-muted)' }}>
               [{result.knowledge_item.type}]
             </small>
             <EvidenceBadge count={result.evidence_ids.length} />

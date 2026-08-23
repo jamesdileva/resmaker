@@ -16,8 +16,8 @@ export function EvidenceBadge({ count, title }: EvidenceBadgeProps) {
       }
       style={{
         fontSize: 12,
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
+        background: 'var(--info-bg)',
+        border: '1px solid var(--info-border)',
         borderRadius: 999,
         padding: '1px 8px',
       }}

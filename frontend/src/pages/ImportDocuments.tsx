@@ -84,7 +84,7 @@ export function ImportDocuments() {
 
       <h3>Import History</h3>
       {history.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No imports yet this session.</p>
+        <p style={{ color: 'var(--text-faint)' }}>No imports yet this session.</p>
       ) : (
         <ul data-testid="import-history">
           {history.map((entry) => (
@@ -93,7 +93,7 @@ export function ImportDocuments() {
               {entry.status === 'completed'
                 ? `- ${entry.itemsCreated} items created`
                 : `- failed: ${entry.error ?? 'unknown error'}`}{' '}
-              <span style={{ color: '#9ca3af' }}>({entry.jobId})</span>
+              <span style={{ color: 'var(--text-muted)' }}>({entry.jobId})</span>
             </li>
           ))}
         </ul>

@@ -21,7 +21,7 @@ export function ContentEditor({ items, onRemove, onClear }: ContentEditorProps) 
         )}
       </div>
       {items.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-faint)' }}>
           Add evidence from the suggestions panel to build your resume.
         </p>
       ) : (

@@ -50,8 +50,8 @@ export function SOQQuestionInput({ value, onChange }: SOQQuestionInputProps) {
           Detected category:{' '}
           <span
             style={{
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
+              background: 'var(--info-bg)',
+              border: '1px solid var(--info-border)',
               borderRadius: 999,
               padding: '2px 10px',
             }}

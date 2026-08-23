@@ -173,7 +173,7 @@ function ContentEditorSummary({
         )}
       </div>
       {count === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-faint)' }}>
           Add evidence suggestions to support your duty responses.
         </p>
       ) : (

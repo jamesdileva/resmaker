@@ -3,16 +3,18 @@ import { act, renderHook } from '@testing-library/react';
 import { UIContextProvider, useUI } from './UIContext';
 
 describe('UIContext', () => {
-  it('provides light theme default and toggles sidebar', () => {
+  it('defaults to dark theme, reflects data-theme, toggles sidebar', () => {
     const { result } = renderHook(() => useUI(), {
       wrapper: UIContextProvider,
     });
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
     expect(result.current.sidebarCollapsed).toBe(false);
     act(() => result.current.toggleSidebar());
     expect(result.current.sidebarCollapsed).toBe(true);
-    act(() => result.current.setTheme('dark'));
-    expect(result.current.theme).toBe('dark');
+    act(() => result.current.setTheme('light'));
+    expect(result.current.theme).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('adds and dismisses toasts', () => {

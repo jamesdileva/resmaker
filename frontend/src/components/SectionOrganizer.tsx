@@ -49,12 +49,12 @@ export function SectionOrganizer({
             onDragOver={(event) => event.preventDefault()}
             onDrop={() => handleDrop(key)}
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               padding: '6px 10px',
               marginBottom: 6,
               cursor: 'grab',
-              background: draggingKey === key ? '#eff6ff' : 'transparent',
+              background: draggingKey === key ? 'var(--info-bg)' : 'transparent',
             }}
           >
             ☰ {section.title}

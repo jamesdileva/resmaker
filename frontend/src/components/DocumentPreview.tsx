@@ -9,7 +9,7 @@ interface DocumentPreviewProps {
 export function DocumentPreview({ document, order }: DocumentPreviewProps) {
   if (!document) {
     return (
-      <div data-testid="document-preview-empty" style={{ color: '#6b7280' }}>
+      <div data-testid="document-preview-empty" style={{ color: 'var(--text-faint)' }}>
         Build a resume to see the preview.
       </div>
     );
@@ -17,7 +17,7 @@ export function DocumentPreview({ document, order }: DocumentPreviewProps) {
 
   return (
     <div data-testid="document-preview">
-      <small style={{ color: '#9ca3af' }}>
+      <small style={{ color: 'var(--text-muted)' }}>
         {document.document_id.slice(0, 8)} · template: {document.template_name}
       </small>
       {orderedSections(document, order).map((section) => (
@@ -38,7 +38,7 @@ export function DocumentPreview({ document, order }: DocumentPreviewProps) {
             <div key={group.evidence_id} style={{ marginBottom: 10 }}>
               <strong>{group.title}</strong>
               {group.dates && (
-                <span style={{ color: '#6b7280' }}> ({group.dates})</span>
+                <span style={{ color: 'var(--text-faint)' }}> ({group.dates})</span>
               )}
               <ul style={{ margin: '4px 0 0' }}>
                 {group.bullets.map((bullet, index) => (

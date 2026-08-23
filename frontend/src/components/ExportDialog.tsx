@@ -40,7 +40,7 @@ export function ExportDialog({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--panel)',
           borderRadius: 8,
           padding: 20,
           minWidth: 300,
@@ -70,7 +70,7 @@ export function ExportDialog({
             />{' '}
             TXT (plain text)
           </label>
-          <label style={{ display: 'block', color: '#9ca3af' }}>
+          <label style={{ display: 'block', color: 'var(--text-muted)' }}>
             <input type="radio" disabled /> PDF (coming soon)
           </label>
         </fieldset>

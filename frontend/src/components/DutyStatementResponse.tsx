@@ -16,7 +16,7 @@ export function DutyStatementResponse({
     <div data-testid="duty-response">
       <h3>Parsed Duties ({groups.length})</h3>
       {groups.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-faint)' }}>
           Parse a duty statement to see requirements here.
         </p>
       ) : (
@@ -27,7 +27,7 @@ export function DutyStatementResponse({
               <li
                 key={group.evidence_id + group.title}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   padding: 8,
                   marginBottom: 8,

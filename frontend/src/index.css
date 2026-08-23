@@ -1,0 +1,26 @@
+/*
+ * Career OS dark theme (default). Components reference these variables
+ * instead of hardcoded light-mode hexes; switching themes later means
+ * flipping [data-theme] on <html> and re-mapping this one file.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #111827; /* page background */
+  --panel: #1f2937; /* dialogs / side panels */
+  --border: #374151; /* hairlines, card outlines */
+  --text: #e5e7eb; /* primary text */
+  --text-muted: #9ca3af; /* secondary text */
+  --text-faint: #6b7280; /* hints, disabled */
+  --chip: #273244; /* small tag/category backgrounds */
+  --info-bg: #1e3a5f; /* informational callouts (was light blue wash) */
+  --info-border: #2563eb;
+}
+
+html,
+body,
+#root {
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+}

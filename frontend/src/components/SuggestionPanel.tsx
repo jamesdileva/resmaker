@@ -73,7 +73,7 @@ export function SuggestionPanel({ selectedIds, onAdd }: SuggestionPanelProps) {
               key={suggestion.knowledge_item.id}
               data-testid="suggestion-item"
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: 8,
                 marginBottom: 8,

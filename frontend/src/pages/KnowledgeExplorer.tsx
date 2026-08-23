@@ -65,7 +65,7 @@ export function KnowledgeExplorer() {
               setQuery(value);
             }}
           />
-          <p style={{ color: '#9ca3af', margin: '6px 0 12px' }}>
+          <p style={{ color: 'var(--text-muted)', margin: '6px 0 12px' }}>
             {isLoading ? '' : `${total} result${total === 1 ? '' : 's'}`}
           </p>
           {error && (

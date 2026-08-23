@@ -53,8 +53,8 @@ export function ProvenancePanel({ itemId, onClose }: ProvenancePanelProps) {
         width: 420,
         height: '100vh',
         overflowY: 'auto',
-        background: '#fff',
-        borderLeft: '2px solid #e5e7eb',
+        background: 'var(--panel)',
+        borderLeft: '2px solid var(--border)',
         boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',
         padding: 20,
         zIndex: 50,
@@ -92,14 +92,14 @@ export function ProvenancePanel({ itemId, onClose }: ProvenancePanelProps) {
                 <small>({data.source_document.file_type})</small>
               </p>
             ) : (
-              <p style={{ color: '#9ca3af' }}>No source document recorded.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No source document recorded.</p>
             )}
           </section>
 
           <section style={{ marginTop: 12 }}>
             <h4>Linked Evidence ({data.evidence.length})</h4>
             {data.evidence.length === 0 ? (
-              <p style={{ color: '#9ca3af' }}>No linked evidence.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No linked evidence.</p>
             ) : (
               data.evidence.map((record) => (
                 <div key={record.id} data-testid="provenance-evidence" style={{ marginBottom: 8 }}>
@@ -121,7 +121,7 @@ export function ProvenancePanel({ itemId, onClose }: ProvenancePanelProps) {
           <section style={{ marginTop: 12 }}>
             <h4>Usage History ({data.usage.length})</h4>
             {data.usage.length === 0 ? (
-              <p style={{ color: '#9ca3af' }}>Not yet used in any application.</p>
+              <p style={{ color: 'var(--text-muted)' }}>Not yet used in any application.</p>
             ) : (
               data.usage.map((entry) => (
                 <div key={entry.application_id} data-testid="provenance-usage" style={{ marginBottom: 8 }}>
