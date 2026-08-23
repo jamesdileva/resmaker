@@ -76,12 +76,19 @@ def main() -> int:
     manifest_path.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
 
     archive_base = target_dir / f"career-os-v{version}"
+    archive_path = Path(f"{archive_base}.zip")
+    # Live-fix (twice bitten): writing the archive inside target_dir while
+    # iterating that directory makes the zip swallow itself into a
+    # multi-GB runaway file. Build it in the releases root instead and
+    # move it in afterwards.
+    tmp_archive = RELEASES / f"career-os-v{version}.tmp.zip"
     with zipfile.ZipFile(
-        f"{archive_base}.zip", "w", zipfile.ZIP_DEFLATED
+        str(tmp_archive), "w", zipfile.ZIP_DEFLATED
     ) as bundle:
-        for file_path in target_dir.iterdir():
+        for file_path in sorted(target_dir.iterdir()):
             if file_path.is_file():
                 bundle.write(file_path, arcname=file_path.name)
+    tmp_archive.replace(archive_path)
 
     print(f"[release] complete -> {archive_base}.zip")
     return 0
