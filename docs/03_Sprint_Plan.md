@@ -1624,6 +1624,19 @@ Create all tables from the schema in Implementation Guide Section 1:
 
 **Estimated Time:** 120 minutes
 
+**Execution notes (2026-08-22):** Shipped as specified with three deviations:
+(1) `Settings.tsx` was created (the plan assumed it existed); (2) config
+storage is `data/llm_config.json` managed by `GET|PUT /llm/config` so the
+Settings toggle works without a backend restart — the router is therefore
+always mounted and polish endpoints answer 403 while disabled (import-time
+router gating would have made the runtime toggle impossible); (3) the
+safety filter gained an anchor rule (verbatim-substring check) on top of
+the guide's length heuristic. Live verification (`scripts/verify_sprint30.py`):
+real gemma2 pass over real imported SOQ text + figures-dense sentence —
+accepted suggestions anchored, numbers `2023/50/98` unchanged after polish,
+transitions + keyword expansion OK, audit log written, flag restored to
+disabled afterwards.
+
 **Dependencies:** Sprint 16 (SOQ builder), Sprint 7, Sprint 1 (config).
 
 ---

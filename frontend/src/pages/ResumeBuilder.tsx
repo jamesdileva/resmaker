@@ -4,6 +4,7 @@ import { ContentEditor } from '../components/ContentEditor';
 import { DocumentPreview } from '../components/DocumentPreview';
 import { ExportToolbar } from '../components/ExportToolbar';
 import { SectionOrganizer } from '../components/SectionOrganizer';
+import { PolishPanel } from '../components/PolishPanel';
 import { buildResume } from '../api/build';
 import { useBuilder } from '../contexts/BuilderContext';
 import { useUI } from '../contexts/UIContext';
@@ -84,6 +85,12 @@ export function ResumeBuilder() {
             items={selected}
             onRemove={removeSelectedItem}
             onClear={clearSelectedItems}
+          />
+          <PolishPanel
+            items={selected}
+            onApplyUpdates={(updates) =>
+              setItemContents((current) => ({ ...current, ...updates }))
+            }
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => void handleBuild()} disabled={isBuilding}>

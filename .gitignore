@@ -18,6 +18,9 @@ htmlcov/
 *.db
 *.sqlite3
 
+# Runtime LLM config (user's local feature flag — never commit)
+backend/data/
+
 # Personal documents (never commit user career data)
 resumes/
 soqs/

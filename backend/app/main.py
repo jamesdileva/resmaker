@@ -16,6 +16,7 @@ from app.api.v1 import (
     export_router,
     import_router,
     knowledge_router,
+    llm_router,
     match_router,
     search_router,
     validate_router,
@@ -82,6 +83,11 @@ app.include_router(search_router, prefix="/api/v1")
 app.include_router(match_router, prefix="/api/v1")
 app.include_router(export_router, prefix="/api/v1")
 app.include_router(validate_router, prefix="/api/v1")
+
+# Sprint 30: the LLM router is always mounted so Settings can flip the
+# feature flag at runtime; polish endpoints return 403 while disabled,
+# keeping the surface unusable without an explicit opt-in.
+app.include_router(llm_router, prefix="/api/v1")
 
 
 @app.exception_handler(AppError)

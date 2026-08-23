@@ -5,6 +5,7 @@ import { DutyStatementBuilder } from '../pages/DutyStatementBuilder';
 import { ImportDocuments } from '../pages/ImportDocuments';
 import { KnowledgeExplorer } from '../pages/KnowledgeExplorer';
 import { ResumeBuilder } from '../pages/ResumeBuilder';
+import { Settings } from '../pages/Settings';
 import { SOQBuilder } from '../pages/SOQBuilder';
 
 export function AppRoutes() {
@@ -17,6 +18,7 @@ export function AppRoutes() {
         <Route path="/soq" element={<SOQBuilder />} />
         <Route path="/duty" element={<DutyStatementBuilder />} />
         <Route path="/explore" element={<KnowledgeExplorer />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
   );

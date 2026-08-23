@@ -724,6 +724,14 @@ Each category has associated keywords defined in `backend/app/data/categories.js
 
 ## 15. LLM Service
 
+> **Implementation note (Sprint 30):** the feature flag/endpoint/model live
+> in `backend/data/llm_config.json` (runtime-toggleable via
+> `GET|PUT /api/v1/llm/config`), falling back to `CAREER_OS_LLM_*` env
+> vars. The router is always mounted; polish endpoints answer **403**
+> while disabled. The safety filter adds an anchor rule beyond §15.3's
+> length heuristic: a suggestion whose "original" is not a verbatim
+> substring of the input is rejected outright.
+
 ### 15.1. LLMConfig
 
 ```python

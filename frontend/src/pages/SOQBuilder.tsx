@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { SOQQuestionInput } from '../components/SOQQuestionInput';
 import { SOQEditor } from '../components/SOQEditor';
+import { PolishPanel } from '../components/PolishPanel';
 import { SuggestionPanel } from '../components/SuggestionPanel';
 import { DocumentPreview } from '../components/DocumentPreview';
 import { ExportToolbar } from '../components/ExportToolbar';
@@ -99,6 +100,12 @@ export function SOQBuilder() {
             maxWords={maxWords}
             onRemove={removeSelectedItem}
             onClear={clearSelectedItems}
+          />
+          <PolishPanel
+            items={selected}
+            onApplyUpdates={(updates) =>
+              setItemContents((current) => ({ ...current, ...updates }))
+            }
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => void handleBuild()} disabled={isBuilding}>

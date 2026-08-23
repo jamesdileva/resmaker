@@ -32,6 +32,9 @@ export function Layout() {
             <li>
               <NavLink to="/explore">Explorer</NavLink>
             </li>
+            <li>
+              <NavLink to="/settings">Settings</NavLink>
+            </li>
           </ul>
         </nav>
       </aside>
