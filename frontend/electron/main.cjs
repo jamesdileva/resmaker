@@ -29,9 +29,13 @@ function createWindow() {
   });
 
   // In dev (electron:dev) the Vite server serves the UI; packaged builds
-  // load the compiled bundle straight from disk.
+  // load the compiled bundle straight from disk. If a dev shell starts
+  // without Vite (e.g. `npm start` launched directly), fall back to the
+  // last built bundle instead of showing a blank white window.
   if (!app.isPackaged && process.env.CAREER_OS_DEV !== '0') {
-    win.loadURL(DEV_SERVER_URL);
+    win.loadURL(DEV_SERVER_URL).catch(() => {
+      win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    });
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
